@@ -89,7 +89,14 @@ function UserRow({ user, expanded, onToggle }: UserRowProps) {
                 )}
               </div>
               {user.display_name && (
-                <p className="text-sm text-muted-foreground truncate mb-1">{user.email}</p>
+                <a
+                  href={`mailto:${user.email}`}
+                  className="text-sm text-muted-foreground truncate mb-1 flex items-center gap-1 hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Mail className="w-3 h-3" />
+                  {user.email}
+                </a>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
