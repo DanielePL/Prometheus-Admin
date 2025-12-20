@@ -83,11 +83,14 @@ function UserRow({ user, expanded, onToggle }: UserRowProps) {
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <p className="font-bold truncate">{user.email}</p>
+                <p className="font-bold truncate">{user.display_name || user.email}</p>
                 {user.subscription.plan_type === "lifetime" && (
                   <Crown className="w-4 h-4 text-yellow-500" />
                 )}
               </div>
+              {user.display_name && (
+                <p className="text-sm text-muted-foreground truncate mb-1">{user.email}</p>
+              )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                 <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
                   {user.subscription.status}
