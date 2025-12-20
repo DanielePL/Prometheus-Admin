@@ -597,10 +597,10 @@ export function DashboardPage() {
                   </div>
                   <div className="text-right ml-2">
                     <p className="text-xs font-bold text-green-500">
-                      {formatCurrency(referral.commission_amount)}
+                      {formatCurrency(referral.commission_amount || 0)}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {format(parseISO(referral.referral_date), "MMM d")}
+                      {referral.referral_date ? format(parseISO(referral.referral_date), "MMM d") : "-"}
                     </p>
                   </div>
                 </Link>

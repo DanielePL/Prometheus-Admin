@@ -182,10 +182,12 @@ export function PartnerDetailPage() {
                   </p>
                 )}
 
-                <p className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  Joined {format(parseISO(partner.created_at), "MMM d, yyyy")}
-                </p>
+                {partner.created_at && (
+                  <p className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    Joined {format(parseISO(partner.created_at), "MMM d, yyyy")}
+                  </p>
+                )}
               </div>
 
               <div className="mt-4 flex items-center gap-2">
@@ -312,10 +314,10 @@ export function PartnerDetailPage() {
                     <tr key={referral.id} className="border-b border-border/50 hover:bg-background/30 transition-colors">
                       <td className="py-3 px-4">
                         <p className="font-medium">{referral.user_email || "Unknown"}</p>
-                        <p className="text-xs text-muted-foreground">{referral.user_id.slice(0, 8)}...</p>
+                        <p className="text-xs text-muted-foreground">{referral.user_id?.slice(0, 8) || "-"}...</p>
                       </td>
                       <td className="py-3 px-4 text-sm text-muted-foreground">
-                        {format(parseISO(referral.referral_date), "MMM d, yyyy")}
+                        {referral.referral_date ? format(parseISO(referral.referral_date), "MMM d, yyyy") : "-"}
                       </td>
                       <td className="py-3 px-4 text-right font-medium">
                         {formatCurrency(referral.subscription_revenue)}
