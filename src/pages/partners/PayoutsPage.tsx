@@ -31,8 +31,8 @@ export function PayoutsPage() {
   const sendBatchMutation = useSendBatchPayouts();
   const confirmMutation = useConfirmPendingCommissions();
 
-  const eligiblePayouts = pendingData?.pending_payouts.filter((p) => p.eligible) || [];
-  const ineligiblePayouts = pendingData?.pending_payouts.filter((p) => !p.eligible) || [];
+  const eligiblePayouts = pendingData?.pending_payouts?.filter((p) => p.eligible) || [];
+  const ineligiblePayouts = pendingData?.pending_payouts?.filter((p) => !p.eligible) || [];
   const totalEligible = eligiblePayouts.reduce((sum, p) => sum + p.total_amount, 0);
 
   const handleSendPayout = async (partnerId: string, name: string, amount: number) => {

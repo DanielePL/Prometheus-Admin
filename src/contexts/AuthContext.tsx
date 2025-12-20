@@ -14,7 +14,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Auth disabled - always authenticated with admin password
-  const [user] = useState<User | null>({ id: "admin", email: "admin@prometheus.app" });
+  const [user] = useState<User | null>({ id: "admin", email: "admin@prometheus.coach" });
   const [token] = useState<string | null>("prometheus_admin_2024");
   const [isLoading] = useState(false);
 

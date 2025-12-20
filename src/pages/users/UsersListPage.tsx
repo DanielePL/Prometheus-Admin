@@ -262,7 +262,7 @@ export function UsersListPage() {
   const { data, isLoading } = useUsers(filters);
 
   // Filter users by search query locally
-  const filteredUsers = data?.users.filter(
+  const filteredUsers = data?.users?.filter(
     (user) =>
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.user_id.toLowerCase().includes(searchQuery.toLowerCase())

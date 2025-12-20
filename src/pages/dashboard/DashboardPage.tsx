@@ -416,7 +416,7 @@ export function DashboardPage() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground">
-            {pendingPayouts?.pending_payouts.filter(p => p.eligible).length || 0} partners ready
+            {pendingPayouts?.pending_payouts?.filter(p => p.eligible).length || 0} partners ready
           </p>
         </Link>
       </div>
