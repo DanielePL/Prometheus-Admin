@@ -11,6 +11,9 @@ import {
   ChevronDown,
   BarChart3,
   Flame,
+  Target,
+  Instagram,
+  ExternalLink,
   type LucideIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -68,6 +71,19 @@ const navigation: NavItem[] = [
     label: "Users",
     icon: Users,
     href: "/users",
+  },
+  {
+    label: "Sales",
+    icon: Target,
+    children: [
+      { label: "Demo Wizard", href: "/sales/demo" },
+      { label: "Pipeline / CRM", href: "/sales/crm" },
+    ],
+  },
+  {
+    label: "Influencers",
+    icon: Instagram,
+    href: "/influencers",
   },
   {
     label: "Settings",
@@ -177,6 +193,22 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        {/* Partner Portal Link */}
+        <div className="border-t border-white/10 p-4">
+          <a
+            href="/partner"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-background/50 hover:text-foreground transition-smooth"
+          >
+            <div className="flex items-center gap-3">
+              <Handshake className="h-5 w-5" />
+              Partner Portal
+            </div>
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        </div>
       </div>
     </aside>
   );
