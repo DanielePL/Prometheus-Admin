@@ -1,6 +1,8 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UserRole } from "@/api/types/auth";
+import type { Permission } from "@/api/types/permissions";
+import { Lock } from "lucide-react";
 
 interface RoleGuardProps {
   children: React.ReactNode;
@@ -31,4 +33,53 @@ export function RoleGuard({
   }
 
   return <>{children}</>;
+}
+
+interface PermissionGuardProps {
+  children: React.ReactNode;
+  permission: Permission;
+  superAdminOnly?: boolean;
+  showAccessDenied?: boolean;
+}
+
+/**
+ * Permission-based route guard.
+ * Shows access denied message or redirects if user doesn't have required permission.
+ * Super admin always has access.
+ */
+export function PermissionGuard({
+  children,
+  permission,
+  superAdminOnly = false,
+  showAccessDenied = true,
+}: PermissionGuardProps) {
+  const { hasPermission, isSuperAdmin } = useAuth();
+
+  // Check super admin requirement
+  if (superAdminOnly && !isSuperAdmin) {
+    if (showAccessDenied) {
+      return <AccessDenied message="Nur Super Admin hat Zugang zu dieser Seite." />;
+    }
+    return <Navigate to="/" replace />;
+  }
+
+  // Check permission
+  if (!hasPermission(permission)) {
+    if (showAccessDenied) {
+      return <AccessDenied message="Du hast keine Berechtigung für diese Seite." />;
+    }
+    return <Navigate to="/" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+function AccessDenied({ message }: { message: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20">
+      <Lock className="h-16 w-16 text-muted-foreground/50 mb-4" />
+      <h2 className="text-xl font-semibold">Zugriff verweigert</h2>
+      <p className="text-muted-foreground mt-2">{message}</p>
+    </div>
+  );
 }

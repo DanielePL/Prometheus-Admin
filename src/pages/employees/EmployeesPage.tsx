@@ -9,6 +9,7 @@ import {
   Calculator,
   Calendar,
   Percent,
+  Lock,
 } from "lucide-react";
 import {
   useEmployees,
@@ -22,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Employee, CreateEmployeeInput } from "@/api/types/employees";
 import { format } from "date-fns";
+import { useAuth } from "@/contexts/AuthContext";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -30,6 +32,9 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
   }).format(amount);
 }
+
+// Masked value for restricted access
+const MASKED_VALUE = "•••••";
 
 interface EmployeeFormProps {
   employee?: Employee;
@@ -136,10 +141,14 @@ export function EmployeesPage() {
   const updateMutation = useUpdateEmployee();
   const deleteMutation = useDeleteEmployee();
   const calculateMutation = useCalculateMonth();
+  const { hasSensitivePermission } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
+
+  // Check if user can view compensation data
+  const canViewCompensation = hasSensitivePermission("compensation:view");
 
   const handleCreate = async (data: CreateEmployeeInput) => {
     await createMutation.mutateAsync(data);
@@ -176,14 +185,16 @@ export function EmployeesPage() {
           <h1 className="text-3xl lg:text-4xl font-bold mb-2">Employees</h1>
           <p className="text-muted-foreground text-lg">Manage salaries and revenue sharing</p>
         </div>
-        <Button
-          onClick={() => setShowForm(true)}
-          className="rounded-xl glow-orange"
-          disabled={showForm || !!editingEmployee}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Employee
-        </Button>
+        {canViewCompensation && (
+          <Button
+            onClick={() => setShowForm(true)}
+            className="rounded-xl glow-orange"
+            disabled={showForm || !!editingEmployee}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Employee
+          </Button>
+        )}
       </div>
 
       {/* Financial Summary */}
@@ -261,46 +272,65 @@ export function EmployeesPage() {
               <p className="text-sm text-muted-foreground">Total Salaries</p>
               {isLoading ? (
                 <Skeleton className="h-7 w-24 mt-1" />
-              ) : (
+              ) : canViewCompensation ? (
                 <p className="text-xl font-bold">{formatCurrency(summary?.total_salaries || 0)}</p>
+              ) : (
+                <p className="text-xl font-bold text-muted-foreground">{MASKED_VALUE}</p>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Calculate Month */}
-      <div className="glass rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-            <Calculator className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold">Calculate Salaries</h2>
-            <p className="text-sm text-muted-foreground">Based on revenue and share percentages</p>
+      {/* Access Restriction Warning */}
+      {!canViewCompensation && (
+        <div className="glass rounded-2xl p-4 border border-amber-500/30 bg-amber-500/5">
+          <div className="flex items-center gap-3">
+            <Lock className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-amber-500">Eingeschraenkter Zugang</p>
+              <p className="text-sm text-muted-foreground">
+                Gehaltsdaten sind nur mit spezieller Berechtigung sichtbar.
+              </p>
+            </div>
           </div>
         </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <Input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="rounded-xl w-48"
-            />
+      {/* Calculate Month - Only visible with compensation permission */}
+      {canViewCompensation && (
+        <div className="glass rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+              <Calculator className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Calculate Salaries</h2>
+              <p className="text-sm text-muted-foreground">Based on revenue and share percentages</p>
+            </div>
           </div>
-          <Button
-            onClick={handleCalculate}
-            disabled={calculateMutation.isPending}
-            className="rounded-xl glow-orange"
-          >
-            <Calculator className="w-4 h-4 mr-2" />
-            {calculateMutation.isPending ? "Calculating..." : "Calculate & Save"}
-          </Button>
+
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-muted-foreground" />
+              <Input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="rounded-xl w-48"
+              />
+            </div>
+            <Button
+              onClick={handleCalculate}
+              disabled={calculateMutation.isPending}
+              className="rounded-xl glow-orange"
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              {calculateMutation.isPending ? "Calculating..." : "Calculate & Save"}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Add/Edit Form */}
       {showForm && (
@@ -364,36 +394,50 @@ export function EmployeesPage() {
                   <div className="grid grid-cols-3 gap-4 text-sm text-right">
                     <div>
                       <p className="text-muted-foreground">Base</p>
-                      <p className="font-bold">{formatCurrency(employee.base_salary)}</p>
+                      {canViewCompensation ? (
+                        <p className="font-bold">{formatCurrency(employee.base_salary)}</p>
+                      ) : (
+                        <p className="font-bold text-muted-foreground">{MASKED_VALUE}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Share</p>
-                      <p className="font-bold">{employee.revenue_share_percent}%</p>
+                      {canViewCompensation ? (
+                        <p className="font-bold">{employee.revenue_share_percent}%</p>
+                      ) : (
+                        <p className="font-bold text-muted-foreground">{MASKED_VALUE}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Calculated</p>
-                      <p className="font-bold text-primary">{formatCurrency(employee.calculated_salary)}</p>
+                      {canViewCompensation ? (
+                        <p className="font-bold text-primary">{formatCurrency(employee.calculated_salary)}</p>
+                      ) : (
+                        <p className="font-bold text-muted-foreground">{MASKED_VALUE}</p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-xl h-8 w-8"
-                      onClick={() => setEditingEmployee(employee)}
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-xl h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(employee.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  {canViewCompensation && (
+                    <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl h-8 w-8"
+                        onClick={() => setEditingEmployee(employee)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(employee.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -405,10 +449,12 @@ export function EmployeesPage() {
             <p className="text-muted-foreground mb-4">
               Add employees to manage salaries and revenue sharing
             </p>
-            <Button onClick={() => setShowForm(true)} className="rounded-xl glow-orange">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First Employee
-            </Button>
+            {canViewCompensation && (
+              <Button onClick={() => setShowForm(true)} className="rounded-xl glow-orange">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Employee
+              </Button>
+            )}
           </div>
         )}
       </div>
