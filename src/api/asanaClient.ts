@@ -65,7 +65,43 @@ class AsanaClient {
     return response.data;
   }
 
-  // Get tasks for a user in a workspace
+  // Search tasks in workspace using the Search API
+  async searchTasks(
+    workspaceGid: string,
+    options: {
+      assignee?: string;
+      completedSince?: string;
+      modifiedAfter?: string;
+      isCompleted?: boolean;
+    } = {}
+  ): Promise<AsanaTask[]> {
+    const params = new URLSearchParams({
+      opt_fields: "name,completed,completed_at,completed_by,due_on,due_at,created_at,modified_at,projects.name,tags.name,assignee.name",
+    });
+
+    if (options.assignee) {
+      params.set("assignee.any", options.assignee);
+    }
+
+    if (options.completedSince) {
+      params.set("completed_on.after", options.completedSince.split("T")[0]);
+    }
+
+    if (options.modifiedAfter) {
+      params.set("modified_on.after", options.modifiedAfter.split("T")[0]);
+    }
+
+    if (options.isCompleted !== undefined) {
+      params.set("completed", options.isCompleted.toString());
+    }
+
+    const response = await this.request<AsanaResponse<AsanaTask[]>>(
+      `/workspaces/${workspaceGid}/tasks/search?${params.toString()}`
+    );
+    return response.data;
+  }
+
+  // Get all tasks for a user (completed + incomplete)
   async getUserTasks(
     userGid: string,
     workspaceGid: string,
@@ -74,24 +110,21 @@ class AsanaClient {
       modifiedSince?: string;
     } = {}
   ): Promise<AsanaTask[]> {
-    const params = new URLSearchParams({
-      assignee: userGid,
-      workspace: workspaceGid,
-      opt_fields: "name,completed,completed_at,completed_by,due_on,due_at,created_at,projects.name,tags.name",
-    });
+    // Fetch both completed and incomplete tasks
+    const [completedTasks, incompleteTasks] = await Promise.all([
+      this.searchTasks(workspaceGid, {
+        assignee: userGid,
+        isCompleted: true,
+        completedSince: options.completedSince,
+        modifiedAfter: options.modifiedSince,
+      }),
+      this.searchTasks(workspaceGid, {
+        assignee: userGid,
+        isCompleted: false,
+      }),
+    ]);
 
-    if (options.completedSince) {
-      params.set("completed_since", options.completedSince);
-    }
-
-    if (options.modifiedSince) {
-      params.set("modified_since", options.modifiedSince);
-    }
-
-    const response = await this.request<AsanaResponse<AsanaTask[]>>(
-      `/tasks?${params.toString()}`
-    );
-    return response.data;
+    return [...completedTasks, ...incompleteTasks];
   }
 
   // Get completed tasks for a user in date range
@@ -100,11 +133,11 @@ class AsanaClient {
     workspaceGid: string,
     since: Date
   ): Promise<AsanaTask[]> {
-    const allTasks = await this.getUserTasks(userGid, workspaceGid, {
+    return this.searchTasks(workspaceGid, {
+      assignee: userGid,
+      isCompleted: true,
       completedSince: since.toISOString(),
     });
-
-    return allTasks.filter((task) => task.completed);
   }
 
   // Calculate task metrics for a user
