@@ -25,6 +25,7 @@ import type { PerformanceFilters, PerformancePeriod, EmployeePerformance } from 
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { de } from "date-fns/locale";
+import { AsanaSettings } from "@/components/performance/AsanaSettings";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("de-CH", {
@@ -188,11 +189,17 @@ export function PerformanceDashboard() {
   });
 
   const [_selectedEmployee, setSelectedEmployee] = useState<string | null>(null);
+  const [showAsanaSettings, setShowAsanaSettings] = useState(false);
 
-  const { data: teamData, isLoading } = useTeamPerformance(filters);
+  const { data: teamData, isLoading, refetch } = useTeamPerformance(filters);
   const { data: activities } = useRecentActivities(5);
-  const { data: asanaStatus } = useAsanaStatus();
+  const { data: asanaStatus, refetch: refetchAsanaStatus } = useAsanaStatus();
   const syncMutation = useSyncAsana();
+
+  const handleAsanaConfigured = () => {
+    refetchAsanaStatus();
+    refetch();
+  };
 
   const handleSync = () => {
     syncMutation.mutate();
@@ -240,7 +247,12 @@ export function PerformanceDashboard() {
             />
             {syncMutation.isPending ? "Syncing..." : "Sync Asana"}
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-xl">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl"
+            onClick={() => setShowAsanaSettings(true)}
+          >
             <Settings className="w-5 h-5" />
           </Button>
         </div>
@@ -259,7 +271,12 @@ export function PerformanceDashboard() {
                 </p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="rounded-xl">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl"
+              onClick={() => setShowAsanaSettings(true)}
+            >
               Verbinden
             </Button>
           </div>
@@ -539,6 +556,13 @@ export function PerformanceDashboard() {
           </div>
         </div>
       )}
+
+      {/* Asana Settings Modal */}
+      <AsanaSettings
+        isOpen={showAsanaSettings}
+        onClose={() => setShowAsanaSettings(false)}
+        onConfigured={handleAsanaConfigured}
+      />
     </div>
   );
 }
