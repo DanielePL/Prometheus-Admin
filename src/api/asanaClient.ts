@@ -76,7 +76,7 @@ class AsanaClient {
     } = {}
   ): Promise<AsanaTask[]> {
     const params = new URLSearchParams({
-      opt_fields: "name,completed,completed_at,completed_by,due_on,due_at,created_at,modified_at,projects.name,tags.name,assignee.name",
+      opt_fields: "name,completed,completed_at,completed_by,due_on,due_at,created_at,modified_at,projects.name,tags.name,assignee,assignee.name,assignee.gid",
     });
 
     if (options.assignee) {
@@ -99,6 +99,49 @@ class AsanaClient {
       `/workspaces/${workspaceGid}/tasks/search?${params.toString()}`
     );
     return response.data;
+  }
+
+  // Get ALL tasks in workspace (for dashboard overview)
+  async getAllWorkspaceTasks(
+    workspaceGid: string,
+    options: {
+      completedSince?: string;
+    } = {}
+  ): Promise<AsanaTask[]> {
+    // Get both completed and incomplete tasks
+    const [completedTasks, incompleteTasks] = await Promise.all([
+      this.searchTasks(workspaceGid, {
+        isCompleted: true,
+        completedSince: options.completedSince,
+      }),
+      this.searchTasks(workspaceGid, {
+        isCompleted: false,
+      }),
+    ]);
+
+    return [...completedTasks, ...incompleteTasks];
+  }
+
+  // Get tasks grouped by assignee
+  async getTasksByAssignee(
+    workspaceGid: string,
+    options: {
+      completedSince?: string;
+    } = {}
+  ): Promise<Map<string, AsanaTask[]>> {
+    const allTasks = await this.getAllWorkspaceTasks(workspaceGid, options);
+
+    const tasksByAssignee = new Map<string, AsanaTask[]>();
+
+    for (const task of allTasks) {
+      const assigneeGid = task.assignee?.gid || "unassigned";
+      if (!tasksByAssignee.has(assigneeGid)) {
+        tasksByAssignee.set(assigneeGid, []);
+      }
+      tasksByAssignee.get(assigneeGid)!.push(task);
+    }
+
+    return tasksByAssignee;
   }
 
   // Get user's task list GID

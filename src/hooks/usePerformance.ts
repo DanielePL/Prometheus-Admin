@@ -44,6 +44,46 @@ const getPeriodDates = (period: PerformancePeriod): { start: Date; end: Date } =
   return { start, end };
 };
 
+// Calculate metrics from tasks
+const calculateMetricsFromTasks = (tasks: { completed: boolean; completed_at: string | null; due_on: string | null }[]) => {
+  const now = new Date();
+  let completed = 0;
+  let pending = 0;
+  let overdue = 0;
+  let onTime = 0;
+  let late = 0;
+
+  tasks.forEach((task) => {
+    if (task.completed) {
+      completed++;
+      if (task.due_on && task.completed_at) {
+        const dueDate = new Date(task.due_on);
+        const completedDate = new Date(task.completed_at);
+        if (completedDate <= dueDate) {
+          onTime++;
+        } else {
+          late++;
+        }
+      } else {
+        onTime++;
+      }
+    } else {
+      pending++;
+      if (task.due_on) {
+        const dueDate = new Date(task.due_on);
+        if (dueDate < now) {
+          overdue++;
+        }
+      }
+    }
+  });
+
+  const totalWithDue = onTime + late;
+  const onTimeRate = totalWithDue > 0 ? (onTime / totalWithDue) * 100 : 100;
+
+  return { completed, pending, overdue, onTimeRate: Math.round(onTimeRate) };
+};
+
 // Fetch real data from Asana
 const fetchAsanaPerformance = async (period: PerformancePeriod): Promise<TeamPerformanceSummary> => {
   const token = localStorage.getItem("asana_token");
@@ -56,72 +96,72 @@ const fetchAsanaPerformance = async (period: PerformancePeriod): Promise<TeamPer
   // Configure client
   asanaClient.configure({ accessToken: token });
 
-  // Get workspace users
-  const users = await asanaClient.getWorkspaceUsers(workspaceId);
   const { start, end } = getPeriodDates(period);
 
-  // Calculate metrics for each user
-  const employees: EmployeePerformance[] = await Promise.all(
-    users.map(async (user) => {
-      const metrics = await asanaClient.calculateUserMetrics(
-        user.gid,
-        workspaceId,
-        start,
-        end
-      );
+  // Get users and ALL tasks in workspace at once
+  const [users, tasksByAssignee] = await Promise.all([
+    asanaClient.getWorkspaceUsers(workspaceId),
+    asanaClient.getTasksByAssignee(workspaceId, {
+      completedSince: start.toISOString(),
+    }),
+  ]);
 
-      // Calculate performance score (1-5) based on metrics
-      let score = 3;
-      if (metrics.onTimeRate >= 90) score = 5;
-      else if (metrics.onTimeRate >= 75) score = 4;
-      else if (metrics.onTimeRate >= 60) score = 3;
-      else if (metrics.onTimeRate >= 40) score = 2;
-      else score = 1;
+  // Build employee performance from grouped tasks
+  const employees: EmployeePerformance[] = users.map((user) => {
+    const userTasks = tasksByAssignee.get(user.gid) || [];
+    const metrics = calculateMetricsFromTasks(userTasks);
 
-      const needsAttention = metrics.overdue > 3 || metrics.onTimeRate < 50;
-      const isTopPerformer = metrics.onTimeRate >= 90 && metrics.completed >= 10;
+    // Calculate performance score (1-5) based on metrics
+    let score = 3;
+    if (metrics.onTimeRate >= 90) score = 5;
+    else if (metrics.onTimeRate >= 75) score = 4;
+    else if (metrics.onTimeRate >= 60) score = 3;
+    else if (metrics.onTimeRate >= 40) score = 2;
+    else score = 1;
 
-      return {
-        id: `perf-${user.gid}`,
-        employeeId: user.gid,
-        employeeName: user.name,
-        employeeRole: "Team Member",
-        avatarUrl: user.photo?.image_128x128,
-        baseSalary: 0,
-        revenueSharePercent: 0,
-        currentPeriod: {
-          tasksCompleted: metrics.completed,
-          tasksPending: metrics.pending,
-          tasksOverdue: metrics.overdue,
-          onTimeRate: metrics.onTimeRate,
-          avgTasksPerWeek: Math.round(metrics.completed / Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)))),
-          revenueGenerated: 0,
-          dealsWon: 0,
-          clientsManaged: 0,
-          performanceScore: score,
-          trend: "stable" as const,
-          trendPercent: 0,
-        },
-        previousPeriod: {
-          tasksCompleted: 0,
-          tasksPending: 0,
-          tasksOverdue: 0,
-          onTimeRate: 0,
-          avgTasksPerWeek: 0,
-          revenueGenerated: 0,
-          dealsWon: 0,
-          clientsManaged: 0,
-          performanceScore: 0,
-          trend: "stable" as const,
-          trendPercent: 0,
-        },
-        isTopPerformer,
-        needsAttention,
-        asanaUserId: user.gid,
-        lastSyncedAt: new Date().toISOString(),
-      };
-    })
-  );
+    const needsAttention = metrics.overdue > 3 || metrics.onTimeRate < 50;
+    const isTopPerformer = metrics.onTimeRate >= 90 && metrics.completed >= 10;
+
+    return {
+      id: `perf-${user.gid}`,
+      employeeId: user.gid,
+      employeeName: user.name,
+      employeeRole: "Team Member",
+      avatarUrl: user.photo?.image_128x128,
+      baseSalary: 0,
+      revenueSharePercent: 0,
+      currentPeriod: {
+        tasksCompleted: metrics.completed,
+        tasksPending: metrics.pending,
+        tasksOverdue: metrics.overdue,
+        onTimeRate: metrics.onTimeRate,
+        avgTasksPerWeek: Math.round(metrics.completed / Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000)))),
+        revenueGenerated: 0,
+        dealsWon: 0,
+        clientsManaged: 0,
+        performanceScore: score,
+        trend: "stable" as const,
+        trendPercent: 0,
+      },
+      previousPeriod: {
+        tasksCompleted: 0,
+        tasksPending: 0,
+        tasksOverdue: 0,
+        onTimeRate: 0,
+        avgTasksPerWeek: 0,
+        revenueGenerated: 0,
+        dealsWon: 0,
+        clientsManaged: 0,
+        performanceScore: 0,
+        trend: "stable" as const,
+        trendPercent: 0,
+      },
+      isTopPerformer,
+      needsAttention,
+      asanaUserId: user.gid,
+      lastSyncedAt: new Date().toISOString(),
+    };
+  });
 
   // Calculate totals
   const totalTasksCompleted = employees.reduce(
