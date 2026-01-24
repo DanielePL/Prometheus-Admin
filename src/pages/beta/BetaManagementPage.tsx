@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Users,
   Apple,
   Smartphone,
   Search,
-  Plus,
   Bug,
   MessageSquare,
   Lightbulb,
@@ -12,41 +11,25 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Mail,
-  Trash2,
-  UserPlus,
-  UserCheck,
   ChevronDown,
   ChevronUp,
   Filter,
-  Upload,
-  Download,
-  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  useBetaTesters,
   useBetaOverview,
-  useCreateBetaTester,
-  useCreateBetaTesters,
-  useDeleteBetaTester,
-  useInviteBetaTester,
-  useActivateBetaTester,
   useBetaFeedback,
   useIosBetaFeedback,
   useUpdateBetaFeedback,
   useUpdateIosBetaFeedback,
 } from "@/hooks/useBeta";
 import type {
-  BetaTester,
-  BetaTesterCreate,
   BetaTesterFilters,
   BetaFeedback,
   BetaFeedbackFilters,
   BetaPlatform,
-  BetaTesterStatus,
   BetaFeedbackStatus,
 } from "@/api/types";
 import { format, parseISO } from "date-fns";
@@ -64,13 +47,6 @@ const platformIcons = {
 const platformColors = {
   ios: { bg: "bg-blue-500/20", text: "text-blue-500" },
   android: { bg: "bg-green-500/20", text: "text-green-500" },
-};
-
-const statusColors: Record<BetaTesterStatus, { bg: string; text: string }> = {
-  pending: { bg: "bg-yellow-500/20", text: "text-yellow-500" },
-  invited: { bg: "bg-blue-500/20", text: "text-blue-500" },
-  active: { bg: "bg-green-500/20", text: "text-green-500" },
-  inactive: { bg: "bg-muted", text: "text-muted-foreground" },
 };
 
 const feedbackStatusColors: Record<BetaFeedbackStatus, { bg: string; text: string; icon: typeof Clock }> = {
@@ -93,303 +69,24 @@ const feedbackTypeColors = {
 };
 
 // =====================================================
-// Add Tester Modal
+// Extracted Tester Row Component
 // =====================================================
 
-interface AddTesterModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onAdd: (name: string, email: string, platform: BetaPlatform) => void;
+interface ExtractedTesterRowProps {
+  tester: {
+    id: string;
+    name: string;
+    platform: BetaPlatform;
+    device_info?: string;
+    app_version?: string;
+    feedback_count: number;
+    last_feedback: string;
+  };
 }
 
-function AddTesterModal({ isOpen, onClose, onAdd }: AddTesterModalProps) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [platform, setPlatform] = useState<BetaPlatform>("ios");
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name && email) {
-      onAdd(name, email, platform);
-      setName("");
-      setEmail("");
-      onClose();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="glass rounded-2xl p-6 w-full max-w-md mx-4">
-        <h2 className="text-xl font-bold mb-4">Add Beta Tester</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="John Doe"
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="john@example.com"
-              className="rounded-xl"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Platform</label>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant={platform === "ios" ? "default" : "outline"}
-                onClick={() => setPlatform("ios")}
-                className="flex-1 rounded-xl"
-              >
-                <Apple className="w-4 h-4 mr-2" />
-                iOS
-              </Button>
-              <Button
-                type="button"
-                variant={platform === "android" ? "default" : "outline"}
-                onClick={() => setPlatform("android")}
-                className="flex-1 rounded-xl"
-              >
-                <Smartphone className="w-4 h-4 mr-2" />
-                Android
-              </Button>
-            </div>
-          </div>
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1 rounded-xl">
-              Add Tester
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================
-// CSV Import Modal
-// =====================================================
-
-interface CsvImportModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onImport: (testers: BetaTesterCreate[]) => void;
-}
-
-function CsvImportModal({ isOpen, onClose, onImport }: CsvImportModalProps) {
-  const [csvData, setCsvData] = useState("");
-  const [preview, setPreview] = useState<BetaTesterCreate[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!isOpen) return null;
-
-  const parseCSV = (text: string): BetaTesterCreate[] => {
-    const lines = text.trim().split("\n");
-    const testers: BetaTesterCreate[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (!line) continue;
-
-      // Skip header row if detected
-      if (i === 0 && (line.toLowerCase().includes("name") || line.toLowerCase().includes("email"))) {
-        continue;
-      }
-
-      // Support both comma and semicolon as delimiter
-      const delimiter = line.includes(";") ? ";" : ",";
-      const parts = line.split(delimiter).map((p) => p.trim().replace(/^["']|["']$/g, ""));
-
-      if (parts.length < 3) {
-        throw new Error(`Row ${i + 1}: At least 3 columns required (name, email, platform)`);
-      }
-
-      const [name, email, platformRaw] = parts;
-      const platform = platformRaw.toLowerCase() as BetaPlatform;
-
-      if (!name || !email) {
-        throw new Error(`Row ${i + 1}: Name and email are required`);
-      }
-
-      if (platform !== "ios" && platform !== "android") {
-        throw new Error(`Row ${i + 1}: Platform must be "ios" or "android", not "${platformRaw}"`);
-      }
-
-      // Basic email validation
-      if (!email.includes("@")) {
-        throw new Error(`Row ${i + 1}: Invalid email "${email}"`);
-      }
-
-      testers.push({ name, email, platform });
-    }
-
-    return testers;
-  };
-
-  const handleTextChange = (text: string) => {
-    setCsvData(text);
-    setError(null);
-    setPreview([]);
-
-    if (text.trim()) {
-      try {
-        const parsed = parseCSV(text);
-        setPreview(parsed);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Parsing error");
-      }
-    }
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      handleTextChange(text);
-    };
-    reader.readAsText(file);
-  };
-
-  const handleImport = () => {
-    if (preview.length > 0) {
-      onImport(preview);
-      setCsvData("");
-      setPreview([]);
-      onClose();
-    }
-  };
-
-  const downloadTemplate = () => {
-    const template = "name,email,platform\nMax Mustermann,max@example.com,ios\nErika Muster,erika@example.com,android";
-    const blob = new Blob([template], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "beta_testers_template.csv";
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="glass rounded-2xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">CSV Import</h2>
-          <Button variant="outline" size="sm" onClick={downloadTemplate} className="rounded-xl">
-            <Download className="w-4 h-4 mr-2" />
-            Template
-          </Button>
-        </div>
-
-        <div className="space-y-4">
-          {/* File Upload */}
-          <div className="border-2 border-dashed border-border rounded-xl p-6 text-center">
-            <input
-              type="file"
-              accept=".csv,.txt"
-              onChange={handleFileUpload}
-              className="hidden"
-              id="csv-upload"
-            />
-            <label htmlFor="csv-upload" className="cursor-pointer">
-              <FileSpreadsheet className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-              <p className="font-medium">Upload CSV file</p>
-              <p className="text-sm text-muted-foreground mt-1">or paste text below</p>
-            </label>
-          </div>
-
-          {/* Text Input */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">CSV data (name, email, platform)</label>
-            <textarea
-              value={csvData}
-              onChange={(e) => handleTextChange(e.target.value)}
-              placeholder="Max Mustermann,max@example.com,ios&#10;Erika Muster,erika@example.com,android"
-              className="w-full h-32 px-3 py-2 rounded-xl bg-background border border-input text-sm font-mono resize-none"
-            />
-          </div>
-
-          {/* Error */}
-          {error && (
-            <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-              {error}
-            </div>
-          )}
-
-          {/* Preview */}
-          {preview.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-sm font-medium">{preview.length} testers detected:</p>
-              <div className="max-h-48 overflow-y-auto space-y-2">
-                {preview.map((t, i) => (
-                  <div key={i} className="flex items-center gap-3 p-2 rounded-xl bg-background/50 text-sm">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      t.platform === "ios" ? "bg-blue-500/20 text-blue-500" : "bg-green-500/20 text-green-500"
-                    }`}>
-                      {t.platform}
-                    </span>
-                    <span className="font-medium">{t.name}</span>
-                    <span className="text-muted-foreground">{t.email}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1 rounded-xl">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleImport}
-              disabled={preview.length === 0}
-              className="flex-1 rounded-xl"
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Import {preview.length} testers
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================================
-// Tester Row Component
-// =====================================================
-
-interface TesterRowProps {
-  tester: BetaTester;
-  onInvite: (id: string) => void;
-  onActivate: (id: string) => void;
-  onDelete: (id: string) => void;
-}
-
-function TesterRow({ tester, onInvite, onActivate, onDelete }: TesterRowProps) {
+function ExtractedTesterRow({ tester }: ExtractedTesterRowProps) {
   const PlatformIcon = platformIcons[tester.platform];
   const platformStyle = platformColors[tester.platform];
-  const statusStyle = statusColors[tester.status];
 
   return (
     <div className="glass rounded-2xl p-4 transition-smooth hover:shadow-[0_0_30px_rgba(var(--primary-rgb),0.1)]">
@@ -400,43 +97,25 @@ function TesterRow({ tester, onInvite, onActivate, onDelete }: TesterRowProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold truncate">{tester.name}</p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Mail className="w-3 h-3" />
-              <span className="truncate">{tester.email}</span>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              {tester.device_info && <span className="truncate">{tester.device_info}</span>}
+              {tester.app_version && <span>v{tester.app_version}</span>}
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusStyle.bg} ${statusStyle.text}`}>
-            {tester.status}
+          <div className="text-right">
+            <p className="text-sm font-medium">{tester.feedback_count} feedback</p>
+            <p className="text-xs text-muted-foreground">
+              Last: {format(parseISO(tester.last_feedback), "MMM d, yyyy")}
+            </p>
+          </div>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-500`}>
+            active
           </span>
-
-          {tester.status === "pending" && (
-            <Button size="sm" variant="outline" onClick={() => onInvite(tester.id)} className="rounded-xl">
-              <UserPlus className="w-4 h-4 mr-1" />
-              Invite
-            </Button>
-          )}
-          {tester.status === "invited" && (
-            <Button size="sm" variant="outline" onClick={() => onActivate(tester.id)} className="rounded-xl">
-              <UserCheck className="w-4 h-4 mr-1" />
-              Activate
-            </Button>
-          )}
-          <Button size="sm" variant="ghost" onClick={() => onDelete(tester.id)} className="rounded-xl text-destructive hover:text-destructive">
-            <Trash2 className="w-4 h-4" />
-          </Button>
         </div>
       </div>
-
-      {(tester.device_model || tester.os_version || tester.notes) && (
-        <div className="mt-3 pt-3 border-t border-border/50 flex flex-wrap gap-3 text-xs text-muted-foreground">
-          {tester.device_model && <span>Device: {tester.device_model}</span>}
-          {tester.os_version && <span>OS: {tester.os_version}</span>}
-          {tester.notes && <span className="text-primary">{tester.notes}</span>}
-        </div>
-      )}
     </div>
   );
 }
@@ -547,8 +226,6 @@ type TabType = "testers" | "android-feedback" | "ios-feedback";
 export function BetaManagementPage() {
   const [activeTab, setActiveTab] = useState<TabType>("testers");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [expandedFeedback, setExpandedFeedback] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -558,66 +235,20 @@ export function BetaManagementPage() {
 
   // Queries
   const { data: overview, isLoading: overviewLoading } = useBetaOverview();
-  const { data: testers, isLoading: testersLoading } = useBetaTesters(testerFilters);
   const { data: androidFeedback, isLoading: androidLoading } = useBetaFeedback(feedbackFilters);
   const { data: iosFeedback, isLoading: iosLoading } = useIosBetaFeedback(feedbackFilters);
 
   // Mutations
-  const createTester = useCreateBetaTester();
-  const createTesters = useCreateBetaTesters();
-  const deleteTester = useDeleteBetaTester();
-  const inviteTester = useInviteBetaTester();
-  const activateTester = useActivateBetaTester();
   const updateAndroidFeedback = useUpdateBetaFeedback();
   const updateIosFeedback = useUpdateIosBetaFeedback();
 
   // Handlers
-  const handleAddTester = (name: string, email: string, platform: BetaPlatform) => {
-    createTester.mutate(
-      { name, email, platform },
-      {
-        onSuccess: () => toast.success("Tester added successfully"),
-        onError: (error) => toast.error(`Failed to add tester: ${error.message}`),
-      }
-    );
-  };
-
-  const handleImportTesters = (testers: BetaTesterCreate[]) => {
-    createTesters.mutate(testers, {
-      onSuccess: (data) => toast.success(`${data.length} testers imported successfully`),
-      onError: (error) => toast.error(`Import failed: ${error.message}`),
-    });
-  };
-
-  const handleDeleteTester = (id: string) => {
-    if (confirm("Are you sure you want to delete this tester?")) {
-      deleteTester.mutate(id, {
-        onSuccess: () => toast.success("Tester deleted"),
-        onError: (error) => toast.error(`Failed to delete: ${error.message}`),
-      });
-    }
-  };
-
-  const handleInviteTester = (id: string) => {
-    inviteTester.mutate(id, {
-      onSuccess: () => toast.success("Invitation sent"),
-      onError: (error) => toast.error(`Failed to invite: ${error.message}`),
-    });
-  };
-
-  const handleActivateTester = (id: string) => {
-    activateTester.mutate(id, {
-      onSuccess: () => toast.success("Tester activated"),
-      onError: (error) => toast.error(`Failed to activate: ${error.message}`),
-    });
-  };
-
   const handleUpdateAndroidFeedback = (id: string, status: BetaFeedbackStatus) => {
     updateAndroidFeedback.mutate(
       { id, update: { status } },
       {
         onSuccess: () => toast.success("Status updated"),
-        onError: (error) => toast.error(`Failed to update: ${error.message}`),
+        onError: () => toast.error("Failed to update status"),
       }
     );
   };
@@ -627,17 +258,10 @@ export function BetaManagementPage() {
       { id, update: { status } },
       {
         onSuccess: () => toast.success("Status updated"),
-        onError: (error) => toast.error(`Failed to update: ${error.message}`),
+        onError: () => toast.error("Failed to update status"),
       }
     );
   };
-
-  // Filter testers by search
-  const filteredTesters = testers?.filter(
-    (t) =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.email.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
 
   // Filter feedback by search
   const filteredAndroidFeedback = androidFeedback?.filter(
@@ -652,14 +276,88 @@ export function BetaManagementPage() {
       f.screen_name.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
 
-  // Count unique testers from feedback (by user_id or username)
-  const uniqueAndroidTesters = new Set(
-    androidFeedback?.map((f) => f.user_id || f.username).filter(Boolean) || []
-  ).size;
+  // Extract unique testers from feedback data
+  interface ExtractedTester {
+    id: string;
+    name: string;
+    platform: BetaPlatform;
+    device_info?: string;
+    app_version?: string;
+    feedback_count: number;
+    last_feedback: string;
+  }
 
-  const uniqueIosTesters = new Set(
-    iosFeedback?.map((f) => f.user_id || f.username).filter(Boolean) || []
-  ).size;
+  const extractedTesters = useMemo(() => {
+    const testerMap = new Map<string, ExtractedTester>();
+
+    // Process Android feedback
+    androidFeedback?.forEach((f) => {
+      const key = f.user_id || f.username;
+      if (!key) return;
+
+      const existing = testerMap.get(`android-${key}`);
+      if (existing) {
+        existing.feedback_count++;
+        if (f.created_at > existing.last_feedback) {
+          existing.last_feedback = f.created_at;
+          if (f.device_info) existing.device_info = f.device_info;
+          if (f.app_version) existing.app_version = f.app_version;
+        }
+      } else {
+        testerMap.set(`android-${key}`, {
+          id: `android-${key}`,
+          name: f.username || f.user_id || "Unknown",
+          platform: "android",
+          device_info: f.device_info,
+          app_version: f.app_version,
+          feedback_count: 1,
+          last_feedback: f.created_at,
+        });
+      }
+    });
+
+    // Process iOS feedback
+    iosFeedback?.forEach((f) => {
+      const key = f.user_id || f.username;
+      if (!key) return;
+
+      const existing = testerMap.get(`ios-${key}`);
+      if (existing) {
+        existing.feedback_count++;
+        if (f.created_at > existing.last_feedback) {
+          existing.last_feedback = f.created_at;
+          if (f.device_info) existing.device_info = f.device_info;
+          if (f.app_version) existing.app_version = f.app_version;
+        }
+      } else {
+        testerMap.set(`ios-${key}`, {
+          id: `ios-${key}`,
+          name: f.username || f.user_id || "Unknown",
+          platform: "ios",
+          device_info: f.device_info,
+          app_version: f.app_version,
+          feedback_count: 1,
+          last_feedback: f.created_at,
+        });
+      }
+    });
+
+    return Array.from(testerMap.values()).sort((a, b) =>
+      b.last_feedback.localeCompare(a.last_feedback)
+    );
+  }, [androidFeedback, iosFeedback]);
+
+  // Count unique testers
+  const uniqueAndroidTesters = extractedTesters.filter(t => t.platform === "android").length;
+  const uniqueIosTesters = extractedTesters.filter(t => t.platform === "ios").length;
+
+  // Filter extracted testers by search and platform
+  const filteredTesters = extractedTesters.filter((t) => {
+    const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.device_info?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
+    const matchesPlatform = !testerFilters.platform || t.platform === testerFilters.platform;
+    return matchesSearch && matchesPlatform;
+  });
 
   return (
     <div className="space-y-6">
@@ -668,18 +366,6 @@ export function BetaManagementPage() {
           <h1 className="text-3xl lg:text-4xl font-bold mb-2">Beta Management</h1>
           <p className="text-muted-foreground text-lg">Manage beta testers and feedback</p>
         </div>
-        {activeTab === "testers" && (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowImportModal(true)} className="rounded-xl">
-              <Upload className="w-4 h-4 mr-2" />
-              CSV Import
-            </Button>
-            <Button onClick={() => setShowAddModal(true)} className="rounded-xl">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Tester
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Stats Cards */}
@@ -762,7 +448,7 @@ export function BetaManagementPage() {
           }`}
         >
           <Users className="w-4 h-4 inline mr-2" />
-          Testers ({testers?.length || 0})
+          Testers ({extractedTesters.length})
         </button>
         <button
           onClick={() => setActiveTab("android-feedback")}
@@ -808,8 +494,8 @@ export function BetaManagementPage() {
         </div>
 
         {showFilters && activeTab === "testers" && (
-          <div className="mt-4 pt-4 border-t border-border grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="space-y-2 max-w-xs">
               <label className="text-sm font-medium">Platform</label>
               <select
                 value={testerFilters.platform || ""}
@@ -819,20 +505,6 @@ export function BetaManagementPage() {
                 <option value="">All Platforms</option>
                 <option value="ios">iOS</option>
                 <option value="android">Android</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <select
-                value={testerFilters.status || ""}
-                onChange={(e) => setTesterFilters({ ...testerFilters, status: e.target.value as BetaTesterStatus || undefined })}
-                className="w-full h-10 px-3 rounded-xl bg-background border border-input"
-              >
-                <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="invited">Invited</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
               </select>
             </div>
           </div>
@@ -875,7 +547,7 @@ export function BetaManagementPage() {
       <div className="space-y-4">
         {/* Testers Tab */}
         {activeTab === "testers" && (
-          testersLoading ? (
+          (androidLoading || iosLoading) ? (
             <>
               <Skeleton className="h-20 rounded-2xl" />
               <Skeleton className="h-20 rounded-2xl" />
@@ -883,25 +555,18 @@ export function BetaManagementPage() {
             </>
           ) : filteredTesters.length > 0 ? (
             filteredTesters.map((tester) => (
-              <TesterRow
+              <ExtractedTesterRow
                 key={tester.id}
                 tester={tester}
-                onInvite={handleInviteTester}
-                onActivate={handleActivateTester}
-                onDelete={handleDeleteTester}
               />
             ))
           ) : (
             <div className="glass rounded-2xl p-12 text-center">
               <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
               <h3 className="text-xl font-bold mb-2">No testers found</h3>
-              <p className="text-muted-foreground mb-4">
-                {searchQuery ? "Try a different search term" : "Add your first beta tester to get started"}
+              <p className="text-muted-foreground">
+                {searchQuery ? "Try a different search term" : "Testers will appear here once they submit feedback"}
               </p>
-              <Button onClick={() => setShowAddModal(true)} className="rounded-xl">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Tester
-              </Button>
             </div>
           )
         )}
@@ -964,20 +629,6 @@ export function BetaManagementPage() {
           )
         )}
       </div>
-
-      {/* Add Tester Modal */}
-      <AddTesterModal
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onAdd={handleAddTester}
-      />
-
-      {/* CSV Import Modal */}
-      <CsvImportModal
-        isOpen={showImportModal}
-        onClose={() => setShowImportModal(false)}
-        onImport={handleImportTesters}
-      />
     </div>
   );
 }
