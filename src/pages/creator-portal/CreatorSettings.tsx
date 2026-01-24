@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Mail, Link, CreditCard, Building, Check, FileText, CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { User, Mail, Link, CreditCard, Building, Check, FileText, Clock, Flame, Download, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { usePartnerProfile, useUpdatePayoutDetails } from "@/hooks/usePartnerPortal";
@@ -230,119 +230,181 @@ export default function PartnerSettings() {
         </div>
       </div>
 
-      {/* Contract Section */}
-      <div className="rounded-xl bg-card p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <FileText className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Contract</h3>
-              <p className="text-sm text-muted-foreground">
-                {signedContract
-                  ? `Signed on ${format(parseISO(signedContract.signed_at!), "MMM d, yyyy")}`
-                  : pendingContract
-                  ? "Awaiting your signature"
-                  : "No contract available"}
-              </p>
-            </div>
-          </div>
-
-          {signedContract && (
-            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-green-500/20 text-green-500 text-sm font-medium">
-              <CheckCircle className="w-4 h-4" />
-              Signed
-            </span>
-          )}
-          {pendingContract && !signedContract && (
-            <span className="flex items-center gap-1 px-3 py-1.5 rounded-full bg-yellow-500/20 text-yellow-500 text-sm font-medium">
-              <Clock className="w-4 h-4" />
-              Pending
-            </span>
-          )}
-        </div>
-
-        {latestContract?.pdf_url ? (
-          <div className="space-y-4">
-            {/* Contract Preview */}
-            <div
-              className="h-40 rounded-lg border-2 border-dashed border-muted overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-              onClick={() => setShowContractViewer(true)}
-            >
-              <iframe
-                src={`${latestContract.signed_pdf_url || latestContract.pdf_url}#toolbar=0&navpanes=0&scrollbar=0`}
-                className="w-full h-full border-0 pointer-events-none"
-                title="Contract Preview"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowContractViewer(true)}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                View Contract
-              </Button>
-
-              {pendingContract && !signedContract && (
-                <Button
-                  onClick={() => setShowSignaturePanel(true)}
-                  className="bg-primary text-primary-foreground"
-                >
-                  <Check className="h-4 w-4 mr-2" />
-                  Sign Contract
-                </Button>
-              )}
-            </div>
-
-            {/* Signature Panel */}
-            {showSignaturePanel && pendingContract && (
-              <div className="mt-4 p-4 rounded-xl border bg-muted/30">
-                <h4 className="font-medium mb-4">Sign Your Contract</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                  By signing below, you agree to the terms and conditions outlined in the contract.
+      {/* Contract Section - Prometheus Branded */}
+      <div className="rounded-xl bg-gradient-to-br from-card to-card/80 border border-primary/10 overflow-hidden">
+        {/* Branded Header */}
+        <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-6 border-b border-primary/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+                <Flame className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Prometheus Creator Agreement</h3>
+                <p className="text-sm text-muted-foreground">
+                  {signedContract
+                    ? `Signed on ${format(parseISO(signedContract.signed_at!), "MMMM d, yyyy")}`
+                    : pendingContract
+                    ? "Awaiting your signature"
+                    : "No contract available"}
                 </p>
-                <ContractSignature
-                  onSignatureComplete={handleSignContract}
-                  onCancel={() => setShowSignaturePanel(false)}
-                  disabled={signContractMutation.isPending}
-                />
+              </div>
+            </div>
+
+            {signedContract && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-green-500/20 text-green-500 font-medium">
+                <Shield className="w-5 h-5" />
+                <span>Signed & Verified</span>
+              </div>
+            )}
+            {pendingContract && !signedContract && (
+              <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-500/20 text-yellow-500 font-medium animate-pulse">
+                <Clock className="w-5 h-5" />
+                <span>Action Required</span>
               </div>
             )}
           </div>
-        ) : (
-          <div className="text-center py-8">
-            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-muted-foreground">
-              No contract has been assigned to your account yet.
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Contact your partner manager if you believe this is an error.
-            </p>
-          </div>
-        )}
+        </div>
+
+        <div className="p-6">
+          {latestContract?.pdf_url ? (
+            <div className="space-y-4">
+              {/* Contract Preview with Branded Frame */}
+              <div
+                className="relative rounded-xl border-2 border-primary/20 overflow-hidden cursor-pointer hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all group"
+                onClick={() => setShowContractViewer(true)}
+              >
+                {/* Branded corner ribbon */}
+                <div className="absolute top-0 right-0 z-10">
+                  <div className="bg-gradient-to-r from-primary to-orange-600 text-white text-xs font-medium px-3 py-1 rounded-bl-lg shadow-lg">
+                    Official Document
+                  </div>
+                </div>
+
+                <iframe
+                  src={`${latestContract.signed_pdf_url || latestContract.pdf_url}#toolbar=0&navpanes=0&scrollbar=0`}
+                  className="w-full h-48 border-0 pointer-events-none"
+                  title="Contract Preview"
+                />
+
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 transition-colors flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-card/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg">
+                    <span className="text-sm font-medium">Click to view full document</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowContractViewer(true)}
+                  className="rounded-xl border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  View Full Contract
+                </Button>
+
+                {signedContract && (
+                  <Button
+                    variant="outline"
+                    onClick={() => window.open(signedContract.signed_pdf_url || signedContract.pdf_url, "_blank")}
+                    className="rounded-xl border-primary/20 hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Signed Copy
+                  </Button>
+                )}
+
+                {pendingContract && !signedContract && (
+                  <Button
+                    onClick={() => setShowSignaturePanel(true)}
+                    className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Sign Contract Now
+                  </Button>
+                )}
+              </div>
+
+              {/* Signature Panel */}
+              {showSignaturePanel && pendingContract && (
+                <div className="mt-6 p-6 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-muted/50 to-muted/20">
+                  <ContractSignature
+                    onSignatureComplete={handleSignContract}
+                    onCancel={() => setShowSignaturePanel(false)}
+                    disabled={signContractMutation.isPending}
+                    creatorName={profile?.name}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-10 w-10 text-muted-foreground/30" />
+              </div>
+              <h4 className="font-semibold text-lg mb-2">No Contract Available</h4>
+              <p className="text-muted-foreground max-w-sm mx-auto">
+                Your Prometheus Creator Agreement hasn't been assigned yet.
+                Contact your partner manager if you believe this is an error.
+              </p>
+              <a
+                href="mailto:creators@prometheus.app"
+                className="inline-flex items-center gap-2 mt-4 text-primary hover:underline"
+              >
+                <Mail className="h-4 w-4" />
+                Contact Support
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Full Contract Viewer Modal */}
+      {/* Full Contract Viewer Modal - Prometheus Branded */}
       {showContractViewer && latestContract && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-bold">Your Contract</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowContractViewer(false)}
-              >
-                Close
-              </Button>
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl border border-primary/10">
+            {/* Branded Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+                  <Flame className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold">Prometheus Creator Agreement</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {signedContract ? "Signed Document" : "Review Document"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {signedContract && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(signedContract.signed_pdf_url || signedContract.pdf_url, "_blank")}
+                    className="rounded-lg border-primary/20"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowContractViewer(false)}
+                  className="rounded-lg"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
             <div className="p-4">
               <ContractViewer
                 pdfUrl={latestContract.signed_pdf_url || latestContract.pdf_url}
-                title="Partner Contract"
+                title="Prometheus Creator Agreement"
                 height="70vh"
               />
             </div>

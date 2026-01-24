@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Download, ExternalLink, ZoomIn, ZoomOut } from "lucide-react";
+import { Download, ExternalLink, ZoomIn, ZoomOut, Flame } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -37,26 +37,30 @@ export function ContractViewer({
     return (
       <div
         className={cn(
-          "flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/10",
+          "flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/20 bg-gradient-to-br from-muted/20 to-muted/5",
           className
         )}
         style={{ height }}
       >
-        <FileText className="w-16 h-16 text-muted-foreground/50 mb-4" />
+        <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+          <Flame className="w-10 h-10 text-primary/40" />
+        </div>
         <p className="text-muted-foreground text-lg font-medium">No contract uploaded</p>
         <p className="text-muted-foreground/70 text-sm mt-1">
-          Upload a PDF to view the contract
+          Upload a PDF to view the Prometheus Creator Agreement
         </p>
       </div>
     );
   }
 
   return (
-    <div className={cn("flex flex-col rounded-xl overflow-hidden border bg-card", className)}>
-      {/* Header / Toolbar */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
-        <div className="flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
+    <div className={cn("flex flex-col rounded-xl overflow-hidden border border-primary/10 bg-card", className)}>
+      {/* Header / Toolbar - Prometheus Branded */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-primary/10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center">
+            <Flame className="w-4 h-4 text-white" />
+          </div>
           <span className="font-medium">{title}</span>
         </div>
 
@@ -134,7 +138,7 @@ export function ContractViewer({
   );
 }
 
-// Simpler inline viewer for previews
+// Simpler inline viewer for previews - Prometheus Branded
 export function ContractPreview({
   pdfUrl,
   className,
@@ -146,17 +150,22 @@ export function ContractPreview({
     return (
       <div
         className={cn(
-          "flex items-center justify-center h-32 rounded-lg border-2 border-dashed border-muted-foreground/20 bg-muted/10",
+          "flex flex-col items-center justify-center h-32 rounded-lg border-2 border-dashed border-primary/20 bg-gradient-to-br from-muted/20 to-muted/5",
           className
         )}
       >
-        <FileText className="w-8 h-8 text-muted-foreground/30" />
+        <Flame className="w-8 h-8 text-primary/30 mb-1" />
+        <span className="text-xs text-muted-foreground">No Contract</span>
       </div>
     );
   }
 
   return (
-    <div className={cn("rounded-lg overflow-hidden border", className)}>
+    <div className={cn("rounded-lg overflow-hidden border border-primary/10 relative", className)}>
+      {/* Small branded badge */}
+      <div className="absolute top-1 right-1 z-10 bg-gradient-to-r from-primary to-orange-600 text-white text-[10px] font-medium px-1.5 py-0.5 rounded">
+        PDF
+      </div>
       <iframe
         src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
         className="w-full h-32 border-0"

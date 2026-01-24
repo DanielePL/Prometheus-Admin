@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Flame, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ interface ContractSignatureProps {
   onCancel?: () => void;
   className?: string;
   disabled?: boolean;
+  creatorName?: string;
 }
 
 export function ContractSignature({
@@ -15,11 +16,13 @@ export function ContractSignature({
   onCancel,
   className,
   disabled = false,
+  creatorName,
 }: ContractSignatureProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
   const [lastPoint, setLastPoint] = useState<{ x: number; y: number } | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -35,9 +38,9 @@ export function ContractSignature({
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    // Set drawing styles
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
+    // Set drawing styles - Prometheus orange for signature
+    ctx.strokeStyle = "#1a1a1a";
+    ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
@@ -118,20 +121,39 @@ export function ContractSignature({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="text-sm text-muted-foreground mb-2">
-        Please sign in the box below using your mouse or finger
+      {/* Prometheus Branding Header */}
+      <div className="flex items-center gap-3 pb-4 border-b border-primary/20">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-orange-600 shadow-lg shadow-primary/25">
+          <Flame className="h-6 w-6 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-lg">Prometheus Creator Agreement</h3>
+          <p className="text-sm text-muted-foreground">Digital Signature</p>
+        </div>
+      </div>
+
+      {/* Creator Info */}
+      {creatorName && (
+        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+          <p className="text-sm text-muted-foreground">Signing as:</p>
+          <p className="font-semibold">{creatorName}</p>
+        </div>
+      )}
+
+      <div className="text-sm text-muted-foreground">
+        Please draw your signature in the box below using your mouse or finger
       </div>
 
       <div
         className={cn(
-          "relative rounded-xl border-2 border-dashed overflow-hidden",
-          disabled ? "opacity-50 cursor-not-allowed" : "border-muted-foreground/30",
-          hasSignature && "border-primary/50"
+          "relative rounded-xl border-2 overflow-hidden bg-white shadow-inner",
+          disabled ? "opacity-50 cursor-not-allowed border-muted" : "border-muted-foreground/20",
+          hasSignature && "border-primary/50 shadow-primary/10"
         )}
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-40 touch-none cursor-crosshair"
+          className="w-full h-48 touch-none cursor-crosshair"
           style={{ display: "block" }}
           onMouseDown={startDrawing}
           onMouseMove={draw}
@@ -142,14 +164,54 @@ export function ContractSignature({
           onTouchEnd={stopDrawing}
         />
 
-        {/* Signature line */}
-        <div className="absolute bottom-8 left-8 right-8 border-b border-muted-foreground/30" />
-        <div className="absolute bottom-2 left-8 text-xs text-muted-foreground">
-          Signature
+        {/* Signature line with X mark */}
+        <div className="absolute bottom-10 left-8 right-8 flex items-end gap-2">
+          <span className="text-muted-foreground/50 text-lg font-serif">X</span>
+          <div className="flex-1 border-b border-muted-foreground/30" />
+        </div>
+        <div className="absolute bottom-3 left-8 text-xs text-muted-foreground">
+          Authorized Signature
+        </div>
+        <div className="absolute bottom-3 right-8 text-xs text-muted-foreground">
+          {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}
         </div>
       </div>
 
-      <div className="flex items-center justify-between">
+      {/* Terms Agreement Checkbox */}
+      <label className="flex items-start gap-3 cursor-pointer group">
+        <div className="relative flex items-center justify-center mt-0.5">
+          <input
+            type="checkbox"
+            checked={agreedToTerms}
+            onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="sr-only"
+            disabled={disabled}
+          />
+          <div
+            className={cn(
+              "w-5 h-5 rounded border-2 transition-all flex items-center justify-center",
+              agreedToTerms
+                ? "bg-primary border-primary"
+                : "border-muted-foreground/30 group-hover:border-primary/50"
+            )}
+          >
+            {agreedToTerms && <Check className="w-3 h-3 text-white" />}
+          </div>
+        </div>
+        <span className="text-sm text-muted-foreground">
+          I confirm that I have read and agree to the{" "}
+          <span className="text-primary font-medium">Prometheus Creator Agreement</span> terms and conditions.
+          I understand that this digital signature is legally binding.
+        </span>
+      </label>
+
+      {/* Security Notice */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-lg p-2">
+        <Shield className="w-4 h-4 text-green-500 shrink-0" />
+        <span>Your signature is secured and encrypted. This document will be timestamped and stored securely.</span>
+      </div>
+
+      <div className="flex items-center justify-between pt-2">
         <div className="flex gap-2">
           <Button
             variant="outline"
@@ -176,11 +238,11 @@ export function ContractSignature({
 
         <Button
           onClick={handleComplete}
-          disabled={!hasSignature || disabled}
-          className="rounded-xl glow-orange"
+          disabled={!hasSignature || !agreedToTerms || disabled}
+          className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
         >
           <Check className="w-4 h-4 mr-1" />
-          Sign Contract
+          Sign & Submit
         </Button>
       </div>
     </div>

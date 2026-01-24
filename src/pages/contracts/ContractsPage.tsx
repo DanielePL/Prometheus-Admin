@@ -12,6 +12,8 @@ import {
   Eye,
   X,
   Filter,
+  Flame,
+  Shield,
 } from "lucide-react";
 import { useContracts, useCreateContract, useUploadContractPdf, useSendContractForSignature, useDeleteContract } from "@/hooks/useContracts";
 import { usePartners } from "@/hooks/usePartners";
@@ -100,15 +102,20 @@ export function ContractsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - Prometheus Branded */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl lg:text-4xl font-bold mb-2">Contracts</h1>
-          <p className="text-muted-foreground text-lg">Manage creator contracts and signatures</p>
+        <div className="flex items-center gap-4">
+          <div className="h-14 w-14 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+            <Flame className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl lg:text-4xl font-bold mb-1">Creator Agreements</h1>
+            <p className="text-muted-foreground">Manage Prometheus creator contracts and signatures</p>
+          </div>
         </div>
         <Button
           onClick={() => setShowUploadModal(true)}
-          className="rounded-xl glow-orange"
+          className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
           disabled={creatorsWithoutContracts.length === 0}
         >
           <Upload className="w-4 h-4 mr-2" />
@@ -116,67 +123,67 @@ export function ContractsPage() {
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Prometheus Branded */}
       <div className="grid gap-4 md:grid-cols-4">
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-2xl p-5 border border-primary/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/20 text-primary">
-              <FileText className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-primary/20 to-orange-500/10 text-primary">
+              <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Total</p>
+              <p className="text-sm text-muted-foreground">Total Contracts</p>
               {isLoading ? (
                 <Skeleton className="h-7 w-12 mt-1" />
               ) : (
-                <p className="text-xl font-bold">{contracts?.length || 0}</p>
+                <p className="text-2xl font-bold">{contracts?.length || 0}</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-2xl p-5 border border-green-500/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-green-500/20 text-green-500">
-              <CheckCircle className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-green-500/20 to-green-500/5 text-green-500">
+              <Shield className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Signed</p>
+              <p className="text-sm text-muted-foreground">Signed & Verified</p>
               {isLoading ? (
                 <Skeleton className="h-7 w-12 mt-1" />
               ) : (
-                <p className="text-xl font-bold">{statusCounts.signed}</p>
+                <p className="text-2xl font-bold text-green-500">{statusCounts.signed}</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-2xl p-5 border border-yellow-500/10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-yellow-500/20 text-yellow-500">
-              <Clock className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-yellow-500/20 to-yellow-500/5 text-yellow-500">
+              <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-sm text-muted-foreground">Awaiting Signature</p>
               {isLoading ? (
                 <Skeleton className="h-7 w-12 mt-1" />
               ) : (
-                <p className="text-xl font-bold">{statusCounts.pending_signature}</p>
+                <p className="text-2xl font-bold text-yellow-500">{statusCounts.pending_signature}</p>
               )}
             </div>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-5">
+        <div className="glass rounded-2xl p-5 border border-muted/20">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-gray-500/20 text-gray-500">
-              <FileText className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-muted/30 to-muted/10 text-muted-foreground">
+              <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Drafts</p>
+              <p className="text-sm text-muted-foreground">Draft Contracts</p>
               {isLoading ? (
                 <Skeleton className="h-7 w-12 mt-1" />
               ) : (
-                <p className="text-xl font-bold">{statusCounts.draft}</p>
+                <p className="text-2xl font-bold">{statusCounts.draft}</p>
               )}
             </div>
           </div>
@@ -320,32 +327,49 @@ export function ContractsPage() {
             );
           })
         ) : (
-          <div className="glass rounded-2xl p-12 text-center">
-            <FileText className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="text-xl font-bold mb-2">No contracts found</h3>
-            <p className="text-muted-foreground mb-4">
+          <div className="glass rounded-2xl p-12 text-center border border-primary/10">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-primary/20 to-orange-500/10 flex items-center justify-center mx-auto mb-4">
+              <Flame className="w-10 h-10 text-primary/50" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">No Contracts Found</h3>
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
               {statusFilter === "all"
-                ? "Upload your first contract to get started"
+                ? "Upload your first Prometheus Creator Agreement to get started with your creators."
                 : `No contracts with status "${STATUS_CONFIG[statusFilter as ContractStatus].label}"`}
             </p>
             {creatorsWithoutContracts.length > 0 && (
-              <Button onClick={() => setShowUploadModal(true)} className="rounded-xl glow-orange">
+              <Button
+                onClick={() => setShowUploadModal(true)}
+                className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
+              >
                 <Upload className="w-4 h-4 mr-2" />
-                Upload Contract
+                Upload First Contract
               </Button>
             )}
           </div>
         )}
       </div>
 
-      {/* Contract Viewer Modal */}
+      {/* Contract Viewer Modal - Prometheus Branded */}
       {selectedContract && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="font-bold">
-                Contract - {selectedContract.creator_name || getCreatorName(selectedContract.creator_id)}
-              </h3>
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-2xl border border-primary/10">
+            {/* Branded Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-primary/10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+                  <Flame className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold">
+                    {selectedContract.creator_name || getCreatorName(selectedContract.creator_id)}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    Prometheus Creator Agreement
+                    {selectedContract.status === "signed" && " (Signed)"}
+                  </p>
+                </div>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -358,7 +382,7 @@ export function ContractsPage() {
             <div className="p-4">
               <ContractViewer
                 pdfUrl={selectedContract.signed_pdf_url || selectedContract.pdf_url}
-                title={`Contract - ${selectedContract.creator_name || getCreatorName(selectedContract.creator_id)}`}
+                title="Prometheus Creator Agreement"
                 height="70vh"
               />
             </div>
@@ -366,12 +390,21 @@ export function ContractsPage() {
         </div>
       )}
 
-      {/* Upload Contract Modal */}
+      {/* Upload Contract Modal - Prometheus Branded */}
       {showUploadModal && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card rounded-2xl w-full max-w-md p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold">Upload Contract</h3>
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl w-full max-w-md overflow-hidden shadow-2xl border border-primary/10">
+            {/* Branded Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-primary/10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+                  <Upload className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">New Creator Agreement</h3>
+                  <p className="text-sm text-muted-foreground">Upload a Prometheus contract</p>
+                </div>
+              </div>
               <Button
                 variant="ghost"
                 size="icon"
@@ -385,13 +418,13 @@ export function ContractsPage() {
               </Button>
             </div>
 
-            <div className="space-y-4">
+            <div className="p-6 space-y-5">
               <div>
                 <label className="text-sm font-medium mb-2 block">Select Creator</label>
                 <select
                   value={selectedCreatorId}
                   onChange={(e) => setSelectedCreatorId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl bg-background border border-input"
+                  className="w-full h-11 px-4 rounded-xl bg-background border border-primary/20 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
                 >
                   <option value="">Choose a creator...</option>
                   {creatorsWithoutContracts.map((creator) => (
@@ -404,15 +437,20 @@ export function ContractsPage() {
 
               <div>
                 <label className="text-sm font-medium mb-2 block">Contract PDF</label>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf"
-                  className="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-                />
+                <div className="relative">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf"
+                    className="w-full text-sm file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:bg-gradient-to-r file:from-primary file:to-orange-600 file:text-white file:font-medium hover:file:from-primary/90 hover:file:to-orange-600/90 file:shadow-lg file:shadow-primary/25 file:cursor-pointer cursor-pointer"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Upload the Prometheus Creator Agreement PDF for this creator
+                </p>
               </div>
 
-              <div className="flex justify-end gap-2 mt-6">
+              <div className="flex justify-end gap-3 pt-4 border-t border-muted/20">
                 <Button
                   variant="ghost"
                   className="rounded-xl"
@@ -424,7 +462,7 @@ export function ContractsPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="rounded-xl glow-orange"
+                  className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
                   onClick={handleUpload}
                   disabled={!selectedCreatorId || createContractMutation.isPending || uploadPdfMutation.isPending}
                 >
