@@ -78,6 +78,7 @@ const allNavigation: NavItem[] = [
     permission: "partners",
     children: [
       { label: "All Creators", href: "/partners" },
+      { label: "Enterprise Deals", href: "/deals" },
       { label: "Contracts", href: "/contracts" },
       { label: "Payouts", href: "/payouts" },
     ],

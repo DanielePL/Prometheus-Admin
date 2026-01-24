@@ -22,6 +22,9 @@ import {
   FileText,
   UserCircle,
   Video,
+  Smartphone,
+  GraduationCap,
+  Building2,
 } from "lucide-react";
 import {
   usePartners,
@@ -33,7 +36,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Partner, CreatePartnerInput, CreatorType } from "@/api/types/partners";
+import type { Partner, CreatePartnerInput, CreatorType, ProductType, ProductCommission } from "@/api/types/partners";
+import { PRODUCT_LABELS, DEFAULT_COMMISSIONS } from "@/api/types/partners";
 import { INFLUENCER_CATEGORIES, TEAM_MEMBERS, type InfluencerCategory, type TeamMember } from "@/api/types/influencers";
 import { cn } from "@/lib/utils";
 
@@ -122,7 +126,24 @@ function generateCodeSuggestions(
   return suggestions.slice(0, 4); // Return max 4 suggestions
 }
 
+// Product icons
+const PRODUCT_ICONS: Record<ProductType, React.ComponentType<{ className?: string }>> = {
+  app: Smartphone,
+  coach: GraduationCap,
+  enterprise: Building2,
+};
+
 function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, defaultCreatorType = "partner" }: PartnerFormProps) {
+  // Initialize product commissions
+  const initProductCommissions = (): ProductCommission[] => {
+    if (partner?.product_commissions) return partner.product_commissions;
+    return (Object.keys(PRODUCT_LABELS) as ProductType[]).map(product => ({
+      product,
+      commission_percent: DEFAULT_COMMISSIONS[product],
+      enabled: partner?.products?.includes(product) || false,
+    }));
+  };
+
   const [formData, setFormData] = useState<CreatePartnerInput>({
     name: partner?.name || "",
     email: partner?.email || "",
@@ -140,6 +161,9 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
     engagement_rate: partner?.engagement_rate || undefined,
     category: partner?.category || undefined,
     contact_person: partner?.contact_person || undefined,
+    // Products
+    products: partner?.products || [],
+    product_commissions: initProductCommissions(),
   });
 
   const isInfluencer = formData.creator_type === "influencer";
@@ -364,7 +388,90 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
             <option value="paypal">PayPal</option>
           </select>
         </div>
+      </div>
 
+      {/* Product Authorization */}
+      <div className="space-y-3 pt-2">
+        <label className="text-sm font-medium">Products & Commissions</label>
+        <p className="text-xs text-muted-foreground">Select which products this creator can sell</p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {(Object.keys(PRODUCT_LABELS) as ProductType[]).map((product) => {
+            const Icon = PRODUCT_ICONS[product];
+            const productCommission = formData.product_commissions?.find(p => p.product === product);
+            const isEnabled = productCommission?.enabled || false;
+
+            return (
+              <div
+                key={product}
+                className={cn(
+                  "rounded-xl border-2 p-4 transition-colors cursor-pointer",
+                  isEnabled
+                    ? "border-primary bg-primary/5"
+                    : "border-muted hover:border-primary/50"
+                )}
+                onClick={() => {
+                  const newCommissions = formData.product_commissions?.map(p =>
+                    p.product === product ? { ...p, enabled: !p.enabled } : p
+                  ) || [];
+                  const newProducts = newCommissions.filter(p => p.enabled).map(p => p.product);
+                  setFormData({
+                    ...formData,
+                    products: newProducts,
+                    product_commissions: newCommissions,
+                  });
+                }}
+              >
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={cn(
+                    "w-10 h-10 rounded-lg flex items-center justify-center",
+                    isEnabled ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  )}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-sm">{PRODUCT_LABELS[product]}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {product === "app" && "B2C Subscriptions"}
+                      {product === "coach" && "Coaching Software"}
+                      {product === "enterprise" && "B2B $149-399/mo"}
+                    </p>
+                  </div>
+                  <div className={cn(
+                    "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                    isEnabled ? "border-primary bg-primary" : "border-muted"
+                  )}>
+                    {isEnabled && <Check className="w-3 h-3 text-primary-foreground" />}
+                  </div>
+                </div>
+
+                {isEnabled && (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs text-muted-foreground">Commission:</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={productCommission?.commission_percent || DEFAULT_COMMISSIONS[product]}
+                      onChange={(e) => {
+                        const newCommissions = formData.product_commissions?.map(p =>
+                          p.product === product
+                            ? { ...p, commission_percent: parseInt(e.target.value) || 0 }
+                            : p
+                        ) || [];
+                        setFormData({ ...formData, product_commissions: newCommissions });
+                      }}
+                      className="h-7 w-16 text-xs rounded-lg"
+                    />
+                    <span className="text-xs text-muted-foreground">%</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
         {/* Influencer-specific fields */}
         {isInfluencer && (
           <>
@@ -964,6 +1071,27 @@ export function PartnersListPage() {
                         {partner.commission_percent}% commission
                       </span>
                     </div>
+
+                    {/* Product badges */}
+                    {partner.products && partner.products.length > 0 && (
+                      <div className="flex items-center gap-1.5 mt-2">
+                        {partner.products.map((product) => {
+                          const Icon = PRODUCT_ICONS[product];
+                          return (
+                            <span
+                              key={product}
+                              className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-background/50 text-xs"
+                              title={PRODUCT_LABELS[product]}
+                            >
+                              <Icon className="w-3 h-3" />
+                              {product === "app" && "App"}
+                              {product === "coach" && "Coach"}
+                              {product === "enterprise" && "Enterprise"}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
