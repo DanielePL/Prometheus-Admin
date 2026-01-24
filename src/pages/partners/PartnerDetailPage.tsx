@@ -63,7 +63,7 @@ export function PartnerDetailPage() {
   const { isSuperAdmin } = useAuth();
   const { data: partners, isLoading: partnersLoading } = usePartners();
   const { data: referrals, isLoading: referralsLoading } = usePartnerReferrals(id);
-  const { data: contracts, isLoading: contractsLoading } = useCreatorContracts(id || "");
+  const { data: contracts } = useCreatorContracts(id || "");
   const sendPayoutMutation = useSendRevolutPayout();
   const createCounterpartyMutation = useCreateRevolutCounterparty();
   const approvePartnerMutation = useApprovePartner();

@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Eraser, Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 

@@ -17,7 +17,6 @@ import {
   Activity,
   FlaskConical,
   Bug,
-  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
