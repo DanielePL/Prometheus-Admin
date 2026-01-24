@@ -1,0 +1,234 @@
+import { useState } from "react";
+import { X, FileText, Download, Loader2, Flame, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { downloadContractPdf, type ContractData } from "./ContractPdfGenerator";
+import type { Partner } from "@/api/types/partners";
+
+interface GenerateContractModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  creators: Partner[];
+  onContractGenerated?: (creatorId: string, pdfBlob: Blob) => void;
+}
+
+export function GenerateContractModal({
+  isOpen,
+  onClose,
+  creators,
+}: GenerateContractModalProps) {
+  const [selectedCreatorId, setSelectedCreatorId] = useState<string>("");
+  const [commissionRate, setCommissionRate] = useState<number>(20);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedFor, setGeneratedFor] = useState<string | null>(null);
+
+  const selectedCreator = creators.find((c) => c.id === selectedCreatorId);
+
+  const handleGenerate = async () => {
+    if (!selectedCreator) return;
+
+    setIsGenerating(true);
+    setGeneratedFor(null);
+
+    try {
+      const contractData: ContractData = {
+        contractId: `PCA-${Date.now().toString(36).toUpperCase()}`,
+        contractDate: new Date().toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        }),
+        creatorName: selectedCreator.name,
+        creatorLegalName: selectedCreator.name, // In real app, might have separate legal name field
+        creatorHandle: selectedCreator.tiktok_handle || selectedCreator.youtube_handle || `@${selectedCreator.name.toLowerCase().replace(/\s+/g, "")}`,
+        creatorEmail: selectedCreator.email,
+        commissionRate: commissionRate,
+      };
+
+      await downloadContractPdf(contractData);
+      setGeneratedFor(selectedCreator.name);
+    } catch (error) {
+      console.error("Failed to generate contract:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleClose = () => {
+    setSelectedCreatorId("");
+    setCommissionRate(20);
+    setGeneratedFor(null);
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center p-4">
+      <div className="bg-card rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl border border-primary/10">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-primary/10 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center shadow-lg shadow-primary/25">
+              <Sparkles className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold">Generate Contract</h3>
+              <p className="text-sm text-muted-foreground">
+                Create a Prometheus Creator Agreement
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="rounded-xl"
+            onClick={handleClose}
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Success Message */}
+          {generatedFor && (
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-600">
+              <FileText className="w-5 h-5" />
+              <div>
+                <p className="font-medium">Contract Generated!</p>
+                <p className="text-sm opacity-80">
+                  Downloaded contract for {generatedFor}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Creator Selection */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Select Creator
+            </label>
+            <select
+              value={selectedCreatorId}
+              onChange={(e) => {
+                setSelectedCreatorId(e.target.value);
+                setGeneratedFor(null);
+              }}
+              className="w-full h-11 px-4 rounded-xl bg-background border border-primary/20 focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+            >
+              <option value="">Choose a creator...</option>
+              {creators.map((creator) => (
+                <option key={creator.id} value={creator.id}>
+                  {creator.name} ({creator.creator_type})
+                  {creator.tiktok_handle && ` - ${creator.tiktok_handle}`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Creator Preview */}
+          {selectedCreator && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-white font-bold">
+                  {selectedCreator.name.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold">{selectedCreator.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedCreator.tiktok_handle || selectedCreator.youtube_handle || selectedCreator.email}
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Type:</span>{" "}
+                  <span className="capitalize">{selectedCreator.creator_type}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Status:</span>{" "}
+                  <span className="capitalize">{selectedCreator.status}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Commission Rate */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Commission Rate (%)
+            </label>
+            <div className="flex items-center gap-3">
+              <Input
+                type="number"
+                min={5}
+                max={50}
+                value={commissionRate}
+                onChange={(e) => setCommissionRate(Number(e.target.value))}
+                className="w-24 rounded-xl border-primary/20"
+              />
+              <div className="flex-1 flex items-center gap-2">
+                {[15, 20, 25, 30].map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => setCommissionRate(rate)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                      commissionRate === rate
+                        ? "bg-primary text-white"
+                        : "bg-muted hover:bg-muted/80"
+                    }`}
+                  >
+                    {rate}%
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Standard rate is 20%. Adjust for high-value creators.
+            </p>
+          </div>
+
+          {/* Contract Preview Info */}
+          <div className="rounded-xl bg-muted/30 p-4 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Flame className="w-4 h-4 text-primary" />
+              Contract will include:
+            </div>
+            <ul className="text-sm text-muted-foreground space-y-1 ml-6">
+              <li>• Commission structure with {commissionRate}% recurring rate</li>
+              <li>• Payment terms ($50 minimum, monthly payouts)</li>
+              <li>• Creator obligations & brand guidelines</li>
+              <li>• Intellectual property clauses</li>
+              <li>• 12-month term with auto-renewal</li>
+              <li>• Signature fields for both parties</li>
+            </ul>
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-4 border-t border-muted/20">
+            <Button variant="ghost" className="rounded-xl" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleGenerate}
+              disabled={!selectedCreatorId || isGenerating}
+              className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 mr-2" />
+                  Generate & Download PDF
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

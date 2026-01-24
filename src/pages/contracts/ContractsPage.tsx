@@ -14,12 +14,14 @@ import {
   Filter,
   Flame,
   Shield,
+  Sparkles,
 } from "lucide-react";
 import { useContracts, useCreateContract, useUploadContractPdf, useSendContractForSignature, useDeleteContract } from "@/hooks/useContracts";
 import { usePartners } from "@/hooks/usePartners";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContractViewer } from "@/components/contracts/ContractViewer";
+import { GenerateContractModal } from "@/components/contracts/GenerateContractModal";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { ContractStatus } from "@/api/types/contracts";
@@ -44,6 +46,7 @@ export function ContractsPage() {
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [selectedCreatorId, setSelectedCreatorId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,14 +116,24 @@ export function ContractsPage() {
             <p className="text-muted-foreground">Manage Prometheus creator contracts and signatures</p>
           </div>
         </div>
-        <Button
-          onClick={() => setShowUploadModal(true)}
-          className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
-          disabled={creatorsWithoutContracts.length === 0}
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          Upload Contract
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => setShowGenerateModal(true)}
+            variant="outline"
+            className="rounded-xl border-primary/30 hover:border-primary hover:bg-primary/5"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Generate Contract
+          </Button>
+          <Button
+            onClick={() => setShowUploadModal(true)}
+            className="rounded-xl bg-gradient-to-r from-primary to-orange-600 hover:from-primary/90 hover:to-orange-600/90 shadow-lg shadow-primary/25"
+            disabled={creatorsWithoutContracts.length === 0}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Upload Contract
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards - Prometheus Branded */}
@@ -475,6 +488,13 @@ export function ContractsPage() {
           </div>
         </div>
       )}
+
+      {/* Generate Contract Modal */}
+      <GenerateContractModal
+        isOpen={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        creators={partners || []}
+      />
     </div>
   );
 }
