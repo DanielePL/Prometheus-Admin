@@ -3,10 +3,14 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
   pdf,
   Font,
 } from "@react-pdf/renderer";
+
+// Prometheus Logo URL (from public folder)
+const PROMETHEUS_LOGO = "/logo-prometheus.png";
 
 // Register Inter font (using system fonts as fallback)
 Font.register({
@@ -48,18 +52,9 @@ const styles = StyleSheet.create({
     borderBottomColor: "#f97316",
   },
   logo: {
-    width: 40,
-    height: 40,
-    backgroundColor: "#f97316",
-    borderRadius: 8,
+    width: 180,
+    height: 36,
     marginRight: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  logoText: {
-    color: "#ffffff",
-    fontSize: 20,
-    fontWeight: 700,
   },
   headerText: {
     flex: 1,
@@ -293,13 +288,11 @@ export const ContractPdfDocument = ({ data }: { data: ContractData }) => (
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>P</Text>
-        </View>
+        <Image style={styles.logo} src={PROMETHEUS_LOGO} />
         <View style={styles.headerText}>
           <Text style={styles.title}>Creator Partnership Agreement</Text>
           <Text style={styles.subtitle}>
-            PeakForce OÜ ("Prometheus") • www.prometheus.coach
+            PeakForce OÜ • www.prometheus.coach
           </Text>
         </View>
       </View>
@@ -454,9 +447,7 @@ export const ContractPdfDocument = ({ data }: { data: ContractData }) => (
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>P</Text>
-        </View>
+        <Image style={styles.logo} src={PROMETHEUS_LOGO} />
         <View style={styles.headerText}>
           <Text style={styles.title}>Creator Partnership Agreement</Text>
           <Text style={styles.subtitle}>
@@ -580,9 +571,7 @@ export const ContractPdfDocument = ({ data }: { data: ContractData }) => (
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>P</Text>
-        </View>
+        <Image style={styles.logo} src={PROMETHEUS_LOGO} />
         <View style={styles.headerText}>
           <Text style={styles.title}>Creator Partnership Agreement</Text>
           <Text style={styles.subtitle}>
@@ -691,9 +680,7 @@ export const ContractPdfDocument = ({ data }: { data: ContractData }) => (
     <Page size="A4" style={styles.page}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.logo}>
-          <Text style={styles.logoText}>P</Text>
-        </View>
+        <Image style={styles.logo} src={PROMETHEUS_LOGO} />
         <View style={styles.headerText}>
           <Text style={styles.title}>Creator Partnership Agreement</Text>
           <Text style={styles.subtitle}>
