@@ -12,7 +12,6 @@ import {
   BarChart3,
   Flame,
   Target,
-  Instagram,
   ExternalLink,
   Activity,
   FlaskConical,
@@ -122,13 +121,8 @@ const allNavigation: NavItem[] = [
     children: [
       { label: "Demo Wizard", href: "/sales/demo" },
       { label: "Pipeline / CRM", href: "/sales/crm" },
+      { label: "Creator Outreach", href: "/influencers", permission: "influencers" },
     ],
-  },
-  {
-    label: "Influencers",
-    icon: Instagram,
-    href: "/influencers",
-    permission: "influencers",
   },
   {
     label: "Settings",
@@ -278,9 +272,9 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* External Portal Links - For users with partners or influencers access */}
-        {(canAccessCRM || hasPermission("partners") || hasPermission("influencers")) && (
-          <div className="border-t border-white/10 p-4 space-y-1">
+        {/* External Portal Link */}
+        {(canAccessCRM || hasPermission("partners")) && (
+          <div className="border-t border-white/10 p-4">
             <a
               href="/partner"
               target="_blank"
@@ -289,18 +283,6 @@ export function Sidebar() {
             >
               <div className="flex items-center gap-3">
                 <Handshake className="h-5 w-5" />
-                Partner Portal
-              </div>
-              <ExternalLink className="h-4 w-4" />
-            </a>
-            <a
-              href="/influencer"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-background/50 hover:text-foreground transition-smooth"
-            >
-              <div className="flex items-center gap-3">
-                <Instagram className="h-5 w-5" />
                 Creator Portal
               </div>
               <ExternalLink className="h-4 w-4" />
