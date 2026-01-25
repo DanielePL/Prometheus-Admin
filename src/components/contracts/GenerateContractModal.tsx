@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { X, FileText, Download, Loader2, Flame, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { downloadContractPdf, type ContractData } from "./ContractPdfGenerator";
 import type { Partner } from "@/api/types/partners";
 
@@ -18,9 +17,11 @@ export function GenerateContractModal({
   creators,
 }: GenerateContractModalProps) {
   const [selectedCreatorId, setSelectedCreatorId] = useState<string>("");
-  const [commissionRate, setCommissionRate] = useState<number>(20);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedFor, setGeneratedFor] = useState<string | null>(null);
+
+  // Fixed commission rate - no selection
+  const commissionRate = 20;
 
   const selectedCreator = creators.find((c) => c.id === selectedCreatorId);
 
@@ -56,7 +57,6 @@ export function GenerateContractModal({
 
   const handleClose = () => {
     setSelectedCreatorId("");
-    setCommissionRate(20);
     setGeneratedFor(null);
     onClose();
   };
@@ -153,40 +153,6 @@ export function GenerateContractModal({
             </div>
           )}
 
-          {/* Commission Rate */}
-          <div>
-            <label className="text-sm font-medium mb-2 block">
-              Commission Rate (%)
-            </label>
-            <div className="flex items-center gap-3">
-              <Input
-                type="number"
-                min={5}
-                max={50}
-                value={commissionRate}
-                onChange={(e) => setCommissionRate(Number(e.target.value))}
-                className="w-24 rounded-xl border-primary/20"
-              />
-              <div className="flex-1 flex items-center gap-2">
-                {[15, 20, 25, 30].map((rate) => (
-                  <button
-                    key={rate}
-                    onClick={() => setCommissionRate(rate)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      commissionRate === rate
-                        ? "bg-primary text-white"
-                        : "bg-muted hover:bg-muted/80"
-                    }`}
-                  >
-                    {rate}%
-                  </button>
-                ))}
-              </div>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Standard rate is 20%. Adjust for high-value creators.
-            </p>
-          </div>
 
           {/* Contract Preview Info */}
           <div className="rounded-xl bg-muted/30 p-4 space-y-2">
@@ -195,7 +161,7 @@ export function GenerateContractModal({
               Contract will include:
             </div>
             <ul className="text-sm text-muted-foreground space-y-1 ml-6">
-              <li>• Commission structure with {commissionRate}% recurring rate</li>
+              <li>• <span className="text-primary font-medium">20% recurring commission</span></li>
               <li>• Payment terms ($50 minimum, monthly payouts)</li>
               <li>• Creator obligations & brand guidelines</li>
               <li>• Intellectual property clauses</li>
