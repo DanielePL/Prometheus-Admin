@@ -32,6 +32,7 @@ import { CrashesPage } from "@/pages/crashes/CrashesPage";
 import { ContractsPage } from "@/pages/contracts/ContractsPage";
 import { DealsPage } from "@/pages/deals/DealsPage";
 import { AmbassadorControlPage } from "@/pages/ambassadors/AmbassadorControlPage";
+import { SupabaseHealthPage } from "@/pages/health/SupabaseHealthPage";
 
 // Creator Portal Pages
 import CreatorLogin from "@/pages/creator-portal/CreatorLogin";
@@ -117,6 +118,9 @@ export const router = createBrowserRouter([
 
       // Crashes
       { path: "crashes", element: <CrashesPage /> },
+
+      // Supabase Health
+      { path: "health", element: <SupabaseHealthPage /> },
 
       // Users
       { path: "users", element: <UsersListPage /> },

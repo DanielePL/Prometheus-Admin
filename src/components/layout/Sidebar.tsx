@@ -16,6 +16,7 @@ import {
   FlaskConical,
   Bug,
   Megaphone,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -116,6 +117,12 @@ const allNavigation: NavItem[] = [
     label: "Crashes",
     icon: Bug,
     href: "/crashes",
+    permission: "users",
+  },
+  {
+    label: "Supabase Health",
+    icon: Database,
+    href: "/health",
     permission: "users",
   },
   {
