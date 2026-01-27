@@ -76,8 +76,7 @@ const allNavigation: NavItem[] = [
     icon: Handshake,
     permission: "partners",
     children: [
-      { label: "Partners", href: "/partners" },
-      { label: "Influencers", href: "/influencers", permission: "influencers" },
+      { label: "Creators", href: "/partners" },
       { label: "Ambassadors", href: "/ambassadors", permission: "ambassadors" },
       { label: "Enterprise Deals", href: "/deals" },
       { label: "Contracts", href: "/contracts" },

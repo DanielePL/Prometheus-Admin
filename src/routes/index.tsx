@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { CreatorProtectedRoute } from "./CreatorProtectedRoute";
-import { InfluencerManagerProtectedRoute } from "./InfluencerManagerProtectedRoute";
+
 import { PermissionGuard } from "./RoleGuard";
 import { CreatorLayout } from "@/components/creator-portal/CreatorLayout";
 
@@ -23,8 +23,7 @@ import { UsersListPage } from "@/pages/users/UsersListPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { SalesDemoPage } from "@/pages/sales/SalesDemoPage";
 import { SalesCRMPage } from "@/pages/sales/SalesCRMPage";
-import InfluencersPage from "@/pages/influencers/InfluencersPage";
-import InfluencerManagerLogin from "@/pages/influencers/InfluencerManagerLogin";
+
 import { AdminPermissionsPage } from "@/pages/settings/AdminPermissionsPage";
 import { PerformanceDashboard } from "@/pages/performance/PerformanceDashboard";
 import { BetaManagementPage } from "@/pages/beta/BetaManagementPage";
@@ -140,22 +139,9 @@ export const router = createBrowserRouter([
       { path: "sales/demo", element: <SalesDemoPage /> },
       { path: "sales/crm", element: <SalesCRMPage /> },
 
-      // Creator Outreach (Influencer CRM) - protected by InfluencerManagerProtectedRoute
-      {
-        path: "influencers",
-        element: (
-          <InfluencerManagerProtectedRoute>
-            <InfluencersPage />
-          </InfluencerManagerProtectedRoute>
-        ),
-      },
+      // Influencers now live in the unified Creators system
+      { path: "influencers", element: <Navigate to="/partners" replace /> },
     ],
-  },
-
-  // Influencer Manager Login (for admin CRM access)
-  {
-    path: "/influencers/login",
-    element: <InfluencerManagerLogin />,
   },
 
   // Creator Portal Routes
