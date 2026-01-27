@@ -15,7 +15,6 @@ import {
   Activity,
   FlaskConical,
   Bug,
-  Megaphone,
   Database,
   type LucideIcon,
 } from "lucide-react";

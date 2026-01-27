@@ -18,7 +18,6 @@ import {
   useIndexHealth,
 } from "@/hooks/useSupabaseHealth";
 import {
-  formatBytes,
   getHealthStatus,
   getDeadTupleStatus,
   HEALTH_STATUS_CONFIG,
