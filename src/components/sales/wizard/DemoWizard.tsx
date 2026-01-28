@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, Save, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WizardProgress } from "./WizardProgress";
 import { DiscoveryStep } from "./DiscoveryStep";
+import { ProductDemoStep } from "./ProductDemoStep";
 import { SolutionStep } from "./SolutionStep";
 import { PricingStep } from "./PricingStep";
 import { LeadCaptureStep } from "./LeadCaptureStep";
@@ -13,6 +14,7 @@ import type { PainPoint, CreateLeadInput } from "@/api/types/sales";
 
 const STEPS = [
   { title: "Discovery", description: "Pain Points" },
+  { title: "Demo", description: "Product Demo" },
   { title: "Solution", description: "3-Tier System" },
   { title: "Pricing", description: "Price Calculator" },
   { title: "Lead", description: "Contact Details" },
@@ -51,11 +53,13 @@ export function DemoWizard() {
     switch (currentStep) {
       case 0:
         return selectedPainPoints.length > 0;
-      case 1:
+      case 1: // Product Demo
         return true;
-      case 2:
+      case 2: // Solution
         return true;
-      case 3:
+      case 3: // Pricing
+        return true;
+      case 4: // Lead Capture
         return (
           formData.gymName.trim() !== "" &&
           formData.contactName.trim() !== "" &&
@@ -130,11 +134,13 @@ export function DemoWizard() {
           />
         )}
 
-        {currentStep === 1 && (
+        {currentStep === 1 && <ProductDemoStep />}
+
+        {currentStep === 2 && (
           <SolutionStep selectedPainPoints={selectedPainPoints} />
         )}
 
-        {currentStep === 2 && (
+        {currentStep === 3 && (
           <PricingStep
             coachesCount={coachesCount}
             clientsCount={clientsCount}
@@ -145,7 +151,7 @@ export function DemoWizard() {
           />
         )}
 
-        {currentStep === 3 && (
+        {currentStep === 4 && (
           <LeadCaptureStep
             formData={formData}
             onFormChange={updateFormData}
