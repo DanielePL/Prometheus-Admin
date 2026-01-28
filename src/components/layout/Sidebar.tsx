@@ -16,6 +16,7 @@ import {
   FlaskConical,
   Bug,
   Database,
+  FolderOpen,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -122,6 +123,12 @@ const allNavigation: NavItem[] = [
     icon: Database,
     href: "/health",
     permission: "users",
+  },
+  {
+    label: "Team Storage",
+    icon: FolderOpen,
+    href: "/storage",
+    permission: "dashboard",
   },
   {
     label: "Settings",

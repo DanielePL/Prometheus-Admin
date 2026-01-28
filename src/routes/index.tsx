@@ -32,6 +32,7 @@ import { ContractsPage } from "@/pages/contracts/ContractsPage";
 import { DealsPage } from "@/pages/deals/DealsPage";
 import { AmbassadorControlPage } from "@/pages/ambassadors/AmbassadorControlPage";
 import { SupabaseHealthPage } from "@/pages/health/SupabaseHealthPage";
+import { TeamStoragePage } from "@/pages/storage/TeamStoragePage";
 
 // Creator Portal Pages
 import CreatorLogin from "@/pages/creator-portal/CreatorLogin";
@@ -120,6 +121,9 @@ export const router = createBrowserRouter([
 
       // Supabase Health
       { path: "health", element: <SupabaseHealthPage /> },
+
+      // Team Storage
+      { path: "storage", element: <TeamStoragePage /> },
 
       // Users
       { path: "users", element: <UsersListPage /> },
