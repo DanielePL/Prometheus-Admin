@@ -3,12 +3,9 @@ export type InfluencerStatus = "pending" | "contacted" | "approved" | "rejected"
 
 // Team members who can be assigned as contact persons
 export const TEAM_MEMBERS = [
+  "Sjoerd",
   "Valerie",
   "Karin",
-  "Sjoerd",
-  "Jesse",
-  "Mory",
-  "Basil",
   "Daniele",
 ] as const;
 

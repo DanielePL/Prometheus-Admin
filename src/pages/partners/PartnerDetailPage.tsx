@@ -280,6 +280,13 @@ export function PartnerDetailPage() {
                     Joined {format(parseISO(partner.created_at), "MMM d, yyyy")}
                   </p>
                 )}
+
+                {partner.contact_person && (
+                  <p className="flex items-center gap-2">
+                    <UserCircle className="w-4 h-4 text-muted-foreground" />
+                    Added by {partner.contact_person}
+                  </p>
+                )}
               </div>
 
               <div className="mt-4 flex items-center gap-2">
@@ -372,15 +379,6 @@ export function PartnerDetailPage() {
                 <p className="font-medium capitalize">
                   {CATEGORY_LABELS[partner.category] || partner.category}
                 </p>
-              </div>
-            )}
-            {partner.contact_person && (
-              <div className="p-4 rounded-xl bg-background/50">
-                <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                  <UserCircle className="w-3 h-3" />
-                  Contact Person
-                </p>
-                <p className="font-medium">{partner.contact_person}</p>
               </div>
             )}
           </div>

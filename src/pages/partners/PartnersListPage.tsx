@@ -189,6 +189,10 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.contact_person) {
+      alert("Please select who added this collaborator (Added by).");
+      return;
+    }
     if (codeStatus === "taken") {
       alert("Referral code is already taken. Please choose a different one.");
       return;
@@ -389,6 +393,28 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
             <option value="crypto">Crypto</option>
           </select>
         </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Added by <span className="text-destructive">*</span>
+          </label>
+          <select
+            value={formData.contact_person || ""}
+            onChange={(e) => setFormData({ ...formData, contact_person: e.target.value as TeamMember || undefined })}
+            className={cn(
+              "w-full h-10 px-3 rounded-xl bg-background border",
+              !formData.contact_person ? "border-input" : "border-input"
+            )}
+            required
+          >
+            <option value="">Select team member</option>
+            {TEAM_MEMBERS.map((member) => (
+              <option key={member} value={member}>
+                {member}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Product Authorization */}
@@ -526,21 +552,6 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
               </select>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Contact Person</label>
-              <select
-                value={formData.contact_person || ""}
-                onChange={(e) => setFormData({ ...formData, contact_person: e.target.value as TeamMember || undefined })}
-                className="w-full h-10 px-3 rounded-xl bg-background border border-input"
-              >
-                <option value="">Select contact</option>
-                {TEAM_MEMBERS.map((member) => (
-                  <option key={member} value={member}>
-                    {member}
-                  </option>
-                ))}
-              </select>
-            </div>
           </>
         )}
       </div>
@@ -1076,6 +1087,12 @@ export function PartnersListPage() {
                       <span className="text-xs text-muted-foreground">
                         {partner.commission_percent}% commission
                       </span>
+                      {partner.contact_person && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 ml-2">
+                          <UserCircle className="w-3 h-3" />
+                          {partner.contact_person}
+                        </span>
+                      )}
                     </div>
 
                     {/* Product badges */}
