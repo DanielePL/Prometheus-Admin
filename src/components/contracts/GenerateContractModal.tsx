@@ -3,6 +3,7 @@ import { X, FileText, Download, Loader2, Flame, Sparkles, Cloud, CheckCircle2, A
 import { Button } from "@/components/ui/button";
 import { generateContractPdf, downloadContractPdf, type ContractData } from "./ContractPdfGenerator";
 import { uploadContractPdf } from "@/api/services/contractStorage";
+import { contractsApi } from "@/api/endpoints/contracts";
 import type { Partner } from "@/api/types/partners";
 
 interface GenerateContractModalProps {
@@ -76,6 +77,17 @@ export function GenerateContractModal({
       );
 
       if (uploadResult.success) {
+        // Create DB record so the contract appears in the contracts list
+        try {
+          await contractsApi.create({
+            creator_id: selectedCreator.id,
+            template_name: "Prometheus Creator Agreement",
+            pdf_url: uploadResult.url,
+            notes: `Generated ${contractId}`,
+          });
+        } catch (dbError) {
+          console.error("Failed to create contract record:", dbError);
+        }
         setUploadStatus("success");
         onContractGenerated?.(selectedCreator.id, contractId);
       } else {
