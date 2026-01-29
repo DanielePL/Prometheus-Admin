@@ -4,6 +4,7 @@ export const ADMIN_EMAILS = {
   ADMIN: "admin@prometheus.coach",
   CAMPUS: "campus@prometheus.coach",
   PARTNER_MANAGER: "partners@prometheus.coach",
+  LAB: "lab@prometheus.coach",
 } as const;
 
 export type AdminEmail = (typeof ADMIN_EMAILS)[keyof typeof ADMIN_EMAILS];
@@ -14,6 +15,7 @@ export const VALID_ADMIN_EMAILS: AdminEmail[] = [
   ADMIN_EMAILS.ADMIN,
   ADMIN_EMAILS.CAMPUS,
   ADMIN_EMAILS.PARTNER_MANAGER,
+  ADMIN_EMAILS.LAB,
 ];
 
 // Admin account credentials and metadata
@@ -21,7 +23,7 @@ export interface AdminAccount {
   email: AdminEmail;
   name: string;
   password: string;
-  role: "super_admin" | "admin" | "campus" | "partner_manager";
+  role: "super_admin" | "admin" | "campus" | "partner_manager" | "lab";
 }
 
 export const ADMIN_ACCOUNTS: AdminAccount[] = [
@@ -49,6 +51,12 @@ export const ADMIN_ACCOUNTS: AdminAccount[] = [
     password: "valerie2026",
     role: "partner_manager",
   },
+  {
+    email: ADMIN_EMAILS.LAB,
+    name: "Basil",
+    password: "basil2026",
+    role: "lab",
+  },
 ];
 
 // Standard permissions (areas in the admin portal)
@@ -73,24 +81,29 @@ export type Permission =
   | "sales:crm"
   | "influencers"
   | "ambassadors"
+  | "lab"
   | "settings";
 
 // Predefined permissions for each role
 export const ROLE_PERMISSIONS: Record<AdminAccount["role"], Permission[]> = {
   super_admin: [
     "dashboard", "costs", "revenue", "analytics", "partners", "partners:create",
-    "employees", "performance", "users", "sales", "influencers", "ambassadors", "settings",
+    "employees", "performance", "users", "sales", "influencers", "ambassadors", "lab", "settings",
   ],
   admin: [
     "dashboard", "costs", "revenue", "analytics", "partners",
-    "users", "sales", "influencers", "ambassadors", "settings",
+    "users", "sales", "influencers", "ambassadors", "lab", "settings",
   ],
   campus: [
     "dashboard", "costs", "revenue", "analytics", "partners",
-    "users", "sales", "influencers", "ambassadors", "settings",
+    "users", "sales", "influencers", "ambassadors", "lab", "settings",
   ],
   partner_manager: [
     "partners", "influencers", "ambassadors",
+  ],
+  lab: [
+    "dashboard", "costs", "revenue", "analytics", "partners",
+    "users", "sales", "influencers", "ambassadors", "lab", "settings",
   ],
 };
 
@@ -144,6 +157,7 @@ export const PERMISSION_CONFIG: PermissionConfig[] = [
   { id: "sales:crm", label: "Pipeline / CRM" },
   { id: "influencers", label: "Influencers" },
   { id: "ambassadors", label: "Ambassadors" },
+  { id: "lab", label: "Prometheus Lab", description: "VBT Analytics & Research" },
   { id: "settings", label: "Settings" },
 ];
 

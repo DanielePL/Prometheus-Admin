@@ -34,6 +34,11 @@ import { AmbassadorControlPage } from "@/pages/ambassadors/AmbassadorControlPage
 import { SupabaseHealthPage } from "@/pages/health/SupabaseHealthPage";
 import { TeamStoragePage } from "@/pages/storage/TeamStoragePage";
 
+// Lab Pages
+import { LabDashboardPage } from "@/pages/lab/LabDashboardPage";
+import { AthletesListPage } from "@/pages/lab/AthletesListPage";
+import { AthleteDetailPage } from "@/pages/lab/AthleteDetailPage";
+
 // Creator Portal Pages
 import CreatorLogin from "@/pages/creator-portal/CreatorLogin";
 import CreatorDashboard from "@/pages/creator-portal/CreatorDashboard";
@@ -142,6 +147,32 @@ export const router = createBrowserRouter([
       // Sales
       { path: "sales/demo", element: <SalesDemoPage /> },
       { path: "sales/crm", element: <SalesCRMPage /> },
+
+      // Prometheus Lab
+      {
+        path: "lab",
+        element: (
+          <PermissionGuard permission="lab">
+            <LabDashboardPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "lab/athletes",
+        element: (
+          <PermissionGuard permission="lab">
+            <AthletesListPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "lab/athletes/:userId",
+        element: (
+          <PermissionGuard permission="lab">
+            <AthleteDetailPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Influencers now live in the unified Creators system
       { path: "influencers", element: <Navigate to="/partners" replace /> },

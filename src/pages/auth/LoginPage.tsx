@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Flame, ArrowLeft, Crown, User, GraduationCap, Handshake, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Flame, ArrowLeft, Crown, User, GraduationCap, Handshake, Eye, EyeOff, Microscope } from "lucide-react";
 import { useTheme } from "next-themes";
 import { ADMIN_ACCOUNTS, type AdminAccount } from "@/api/types/permissions";
 import gradientBg from "@/assets/gradient-bg.jpg";
@@ -15,6 +15,7 @@ const roleConfig: Record<AdminAccount["role"], { icon: typeof User; color: strin
   admin: { icon: User, color: "text-blue-500 bg-blue-500/20", label: "Admin" },
   campus: { icon: GraduationCap, color: "text-green-500 bg-green-500/20", label: "Campus" },
   partner_manager: { icon: Handshake, color: "text-purple-500 bg-purple-500/20", label: "Partner Manager" },
+  lab: { icon: Microscope, color: "text-cyan-500 bg-cyan-500/20", label: "Researcher" },
 };
 
 export function LoginPage() {
@@ -39,6 +40,11 @@ export function LoginPage() {
     // Partner managers should go to partners page by default
     if (account.role === "partner_manager") {
       return "/partners";
+    }
+
+    // Lab users should go to lab page by default
+    if (account.role === "lab") {
+      return "/lab";
     }
 
     // Everyone else goes to dashboard

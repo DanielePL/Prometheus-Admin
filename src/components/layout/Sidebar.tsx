@@ -17,6 +17,7 @@ import {
   Bug,
   Database,
   FolderOpen,
+  Microscope,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -129,6 +130,15 @@ const allNavigation: NavItem[] = [
     icon: FolderOpen,
     href: "/storage",
     permission: "dashboard",
+  },
+  {
+    label: "Prometheus Lab",
+    icon: Microscope,
+    permission: "lab",
+    children: [
+      { label: "Dashboard", href: "/lab" },
+      { label: "Athletes", href: "/lab/athletes" },
+    ],
   },
   {
     label: "Settings",
