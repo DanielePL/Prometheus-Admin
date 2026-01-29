@@ -68,6 +68,10 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
   const [newComment, setNewComment] = useState("");
   const [commentAuthor, setCommentAuthor] = useState<TaskAssignee | "">("");
   const [showAttachModal, setShowAttachModal] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState("");
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState("");
 
   if (!isOpen) return null;
 
@@ -108,6 +112,46 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
     if (window.confirm("Delete this task? This cannot be undone.")) {
       deleteTask.mutate(taskId, { onSuccess: onClose });
     }
+  };
+
+  const handleTitleEdit = () => {
+    setEditedTitle(task.title);
+    setIsEditingTitle(true);
+  };
+
+  const handleTitleSave = () => {
+    if (editedTitle.trim() && editedTitle.trim() !== task.title) {
+      updateTask.mutate({ id: taskId, data: { title: editedTitle.trim() } });
+    }
+    setIsEditingTitle(false);
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleTitleSave();
+    } else if (e.key === "Escape") {
+      setIsEditingTitle(false);
+    }
+  };
+
+  const handleDescriptionEdit = () => {
+    setEditedDescription(task.description || "");
+    setIsEditingDescription(true);
+  };
+
+  const handleDescriptionSave = () => {
+    const newDesc = editedDescription.trim();
+    if (newDesc !== (task.description || "")) {
+      updateTask.mutate({ id: taskId, data: { description: newDesc || null } });
+    }
+    setIsEditingDescription(false);
+  };
+
+  const handleDescriptionKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsEditingDescription(false);
+    }
+    // Allow Enter for new lines in textarea
   };
 
   const formatDate = (dateString: string) => {
@@ -158,7 +202,24 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
                 </span>
               )}
             </div>
-            <h2 className="text-xl font-bold">{task.title}</h2>
+            {isEditingTitle ? (
+              <Input
+                autoFocus
+                value={editedTitle}
+                onChange={(e) => setEditedTitle(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={handleTitleKeyDown}
+                className="text-xl font-bold h-auto py-0 px-1 bg-card"
+              />
+            ) : (
+              <h2
+                className="text-xl font-bold cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+                onClick={handleTitleEdit}
+                title="Click to edit"
+              >
+                {task.title}
+              </h2>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-5 w-5" />
@@ -168,12 +229,29 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
         {/* Content */}
         <div className="overflow-y-auto max-h-[calc(90vh-180px)] p-6 space-y-6">
           {/* Description */}
-          {task.description && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-muted-foreground">Description</h3>
-              <p className="text-sm whitespace-pre-wrap">{task.description}</p>
-            </div>
-          )}
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-muted-foreground">Description</h3>
+            {isEditingDescription ? (
+              <textarea
+                autoFocus
+                value={editedDescription}
+                onChange={(e) => setEditedDescription(e.target.value)}
+                onBlur={handleDescriptionSave}
+                onKeyDown={handleDescriptionKeyDown}
+                placeholder="Add a description..."
+                className="w-full min-h-[80px] p-2 text-sm bg-card border border-muted rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                rows={4}
+              />
+            ) : (
+              <p
+                className="text-sm whitespace-pre-wrap cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors min-h-[40px]"
+                onClick={handleDescriptionEdit}
+                title="Click to edit"
+              >
+                {task.description || <span className="text-muted-foreground italic">Add a description...</span>}
+              </p>
+            )}
+          </div>
 
           {/* Properties Grid */}
           <div className="grid gap-4 sm:grid-cols-2">
