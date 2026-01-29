@@ -12,6 +12,8 @@ import {
   Paperclip,
   ExternalLink,
   Download,
+  Pencil,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,22 +205,42 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
               )}
             </div>
             {isEditingTitle ? (
-              <Input
-                autoFocus
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={handleTitleKeyDown}
-                className="text-xl font-bold h-auto py-0 px-1 bg-card"
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  autoFocus
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  className="text-xl font-bold h-auto py-1 px-2 bg-card flex-1"
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTitleSave}
+                  className="text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                >
+                  <Check className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingTitle(false)}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             ) : (
-              <h2
-                className="text-xl font-bold cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
-                onClick={handleTitleEdit}
-                title="Click to edit"
-              >
-                {task.title}
-              </h2>
+              <div className="flex items-center gap-2 group">
+                <h2 className="text-xl font-bold">{task.title}</h2>
+                <button
+                  onClick={handleTitleEdit}
+                  className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
+                  title="Edit title"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </div>
             )}
           </div>
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -230,25 +252,48 @@ export function TaskDetailModal({ taskId, isOpen, onClose }: TaskDetailModalProp
         <div className="overflow-y-auto max-h-[calc(90vh-180px)] p-6 space-y-6">
           {/* Description */}
           <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-muted-foreground">Description</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground">Description</h3>
+              {!isEditingDescription && (
+                <button
+                  onClick={handleDescriptionEdit}
+                  className="text-muted-foreground hover:text-primary transition-colors"
+                  title="Edit description"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             {isEditingDescription ? (
-              <textarea
-                autoFocus
-                value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
-                onBlur={handleDescriptionSave}
-                onKeyDown={handleDescriptionKeyDown}
-                placeholder="Add a description..."
-                className="w-full min-h-[80px] p-2 text-sm bg-card border border-muted rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                rows={4}
-              />
+              <div className="space-y-2">
+                <textarea
+                  autoFocus
+                  value={editedDescription}
+                  onChange={(e) => setEditedDescription(e.target.value)}
+                  onKeyDown={handleDescriptionKeyDown}
+                  placeholder="Add a description..."
+                  className="w-full min-h-[80px] p-2 text-sm bg-card border border-muted rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                  rows={4}
+                />
+                <div className="flex gap-2 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditingDescription(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleDescriptionSave}
+                  >
+                    Save
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <p
-                className="text-sm whitespace-pre-wrap cursor-pointer hover:bg-muted/50 rounded p-2 -m-2 transition-colors min-h-[40px]"
-                onClick={handleDescriptionEdit}
-                title="Click to edit"
-              >
-                {task.description || <span className="text-muted-foreground italic">Add a description...</span>}
+              <p className="text-sm whitespace-pre-wrap min-h-[40px]">
+                {task.description || <span className="text-muted-foreground italic">No description</span>}
               </p>
             )}
           </div>
