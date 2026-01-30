@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { ExternalLink, Monitor, Play, X, Presentation } from "lucide-react";
-import { Button } from "@/components/ui/button";
-
-const DEMO_URL = "https://danielepl.github.io/PrometheusPartnershipDemo/enterprise/";
+import { Play, Presentation } from "lucide-react";
+import { EcosystemPresentation } from "./EcosystemPresentation";
 
 export function ProductDemoStep() {
   const [showDemo, setShowDemo] = useState(false);
@@ -13,7 +11,7 @@ export function ProductDemoStep() {
         <div>
           <h2 className="text-2xl font-bold">Product Demo</h2>
           <p className="mt-1 text-muted-foreground">
-            Walk through the Prometheus Enterprise platform with the prospect
+            Präsentiere das Prometheus Ecosystem dem Interessenten
           </p>
         </div>
 
@@ -29,10 +27,10 @@ export function ProductDemoStep() {
             </div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold group-hover:text-primary transition-colors">
-                Prometheus Enterprise Presentation
+                Prometheus Ecosystem Präsentation
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">
-                8 interactive slides — navigate with arrow keys or swipe
+                8 interaktive Slides — navigiere mit Pfeiltasten oder klicke
               </p>
             </div>
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
@@ -41,61 +39,26 @@ export function ProductDemoStep() {
           </div>
         </button>
 
-        {/* External link fallback */}
-        <div className="flex items-center justify-center">
-          <a
-            href={DEMO_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open in new tab instead
-          </a>
+        {/* Key Topics Preview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            "VBT Technologie",
+            "Coach Dashboard",
+            "Enterprise Features",
+            "Partner Programm",
+          ].map((topic) => (
+            <div
+              key={topic}
+              className="p-3 rounded-xl bg-card/30 border border-muted/20 text-center text-sm"
+            >
+              {topic}
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Fullscreen Overlay */}
-      {showDemo && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
-          {/* Toolbar */}
-          <div className="flex items-center justify-between px-4 py-3 bg-black/80 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              <Monitor className="h-4 w-4 text-white/60" />
-              <span className="text-sm text-white/60">
-                Prometheus Enterprise Demo — arrow keys or swipe to navigate
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <a
-                href={DEMO_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-              >
-                <ExternalLink className="h-4 w-4" />
-                New tab
-              </a>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowDemo(false)}
-                className="text-white/60 hover:text-white hover:bg-white/10"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Full iframe */}
-          <iframe
-            src={DEMO_URL}
-            title="Prometheus Enterprise Demo"
-            className="flex-1 w-full border-0"
-            allow="fullscreen"
-          />
-        </div>
-      )}
+      {/* Fullscreen Presentation */}
+      {showDemo && <EcosystemPresentation onClose={() => setShowDemo(false)} />}
     </>
   );
 }
