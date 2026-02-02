@@ -1,8 +1,3 @@
-// =============================================================================
-// LaunchPad - Auth Types
-// =============================================================================
-
-// User roles for backward compatibility with creator portal
 export type UserRole = "admin" | "sales" | "partner" | "influencer_manager" | "influencer";
 
 export interface LoginRequest {
@@ -25,16 +20,33 @@ export interface User {
   influencer_id?: string; // For influencer role - links to their influencer record
 }
 
-// Creator Portal Auth (kept for backward compatibility)
-export interface CreatorLoginRequest {
+// Influencer Manager Auth
+export interface InfluencerManagerLoginRequest {
   email: string;
-  code: string; // Unique access code for creator
+  password: string;
 }
 
-export interface CreatorLoginResponse {
+export interface InfluencerManagerLoginResponse {
   success: boolean;
   token: string;
-  creator: {
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    role: "influencer_manager";
+  };
+}
+
+// Influencer Personal Portal Auth
+export interface InfluencerLoginRequest {
+  email: string;
+  code: string; // Unique access code for influencer
+}
+
+export interface InfluencerLoginResponse {
+  success: boolean;
+  token: string;
+  influencer: {
     id: string;
     name: string;
     email: string;

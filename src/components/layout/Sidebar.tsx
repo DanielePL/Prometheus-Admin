@@ -7,9 +7,10 @@ import {
   Users,
   Handshake,
   Building2,
+  Bell,
   ChevronDown,
   BarChart3,
-  Rocket,
+  Flame,
   ExternalLink,
   Activity,
   FlaskConical,
@@ -17,11 +18,6 @@ import {
   Database,
   FolderOpen,
   Microscope,
-  CheckSquare,
-  Shield,
-  Settings,
-  UsersRound,
-  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -32,8 +28,7 @@ interface NavChild {
   label: string;
   href: string;
   permission?: Permission;
-  ownerOnly?: boolean;
-  adminOnly?: boolean;
+  superAdminOnly?: boolean;
 }
 
 interface NavItem {
@@ -41,9 +36,8 @@ interface NavItem {
   icon: LucideIcon;
   href?: string;
   children?: NavChild[];
-  permission?: Permission;
-  ownerOnly?: boolean;
-  adminOnly?: boolean;
+  permission?: Permission; // Required permission for this nav item
+  superAdminOnly?: boolean; // Only show for super admin
 }
 
 const allNavigation: NavItem[] = [
@@ -52,14 +46,6 @@ const allNavigation: NavItem[] = [
     icon: LayoutDashboard,
     href: "/",
     permission: "dashboard",
-  },
-  {
-    label: "App Launch",
-    icon: Sparkles,
-    children: [
-      { label: "Overview", href: "/app-launch" },
-      { label: "AI Assistant", href: "/app-launch/assistant" },
-    ],
   },
   {
     label: "Costs",
@@ -88,24 +74,17 @@ const allNavigation: NavItem[] = [
     ],
   },
   {
-    label: "Creators",
+    label: "Collaborators",
     icon: Handshake,
-    permission: "creators",
+    permission: "partners",
     children: [
-      { label: "All Creators", href: "/partners" },
-      { label: "Ambassadors", href: "/ambassadors" },
+      { label: "Creators", href: "/partners" },
+      { label: "Ambassadors", href: "/ambassadors", permission: "ambassadors" },
       { label: "Enterprise Deals", href: "/deals" },
       { label: "Contracts", href: "/contracts" },
       { label: "Payouts", href: "/payouts" },
-    ],
-  },
-  {
-    label: "Sales",
-    icon: TrendingUp,
-    permission: "sales",
-    children: [
-      { label: "Demo Wizard", href: "/sales/demo" },
-      { label: "Pipeline / CRM", href: "/sales/crm" },
+      { label: "Demo Wizard", href: "/sales/demo", permission: "sales" },
+      { label: "Pipeline / CRM", href: "/sales/crm", permission: "sales" },
     ],
   },
   {
@@ -113,14 +92,14 @@ const allNavigation: NavItem[] = [
     icon: Building2,
     href: "/employees",
     permission: "employees",
-    adminOnly: true,
+    superAdminOnly: true,
   },
   {
     label: "Performance",
     icon: Activity,
     href: "/performance",
     permission: "performance",
-    ownerOnly: true,
+    superAdminOnly: true,
   },
   {
     label: "Users",
@@ -141,28 +120,19 @@ const allNavigation: NavItem[] = [
     permission: "users",
   },
   {
-    label: "System Health",
+    label: "Supabase Health",
     icon: Database,
     href: "/health",
-    adminOnly: true,
+    permission: "users",
   },
   {
     label: "Team Storage",
     icon: FolderOpen,
     href: "/storage",
-    permission: "storage",
+    permission: "dashboard",
   },
   {
-    label: "Tasks",
-    icon: CheckSquare,
-    permission: "tasks",
-    children: [
-      { label: "All Tasks", href: "/tasks" },
-      { label: "Projects", href: "/tasks/projects" },
-    ],
-  },
-  {
-    label: "Lab",
+    label: "Prometheus Lab",
     icon: Microscope,
     permission: "lab",
     children: [
@@ -171,24 +141,12 @@ const allNavigation: NavItem[] = [
     ],
   },
   {
-    label: "Security",
-    icon: Shield,
-    adminOnly: true,
-    children: [
-      { label: "Activity Log", href: "/security/activity-log" },
-      { label: "Login Audit", href: "/security/login-audit", ownerOnly: true },
-    ],
-  },
-  {
     label: "Settings",
-    icon: Settings,
+    icon: Bell,
     permission: "settings",
     children: [
-      { label: "Organization", href: "/settings/organization", adminOnly: true },
-      { label: "Team Members", href: "/settings/team", adminOnly: true },
-      { label: "Billing", href: "/settings/billing", adminOnly: true },
       { label: "Notifications", href: "/settings/notifications" },
-      { label: "Permissions", href: "/settings/permissions", ownerOnly: true },
+      { label: "Admin Permissions", href: "/settings/permissions", superAdminOnly: true },
     ],
   },
 ];
@@ -196,7 +154,7 @@ const allNavigation: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
-  const { hasPermission, isOwner, isAdmin, organization } = useAuth();
+  const { hasPermission, isSuperAdmin, canAccessCRM } = useAuth();
 
   // Filter navigation based on user permissions
   const navigation = useMemo(() => {
@@ -206,12 +164,8 @@ export function Sidebar() {
         if (item.permission && !hasPermission(item.permission)) {
           return false;
         }
-        // If owner only
-        if (item.ownerOnly && !isOwner) {
-          return false;
-        }
-        // If admin only
-        if (item.adminOnly && !isAdmin) {
+        // If super admin only
+        if (item.superAdminOnly && !isSuperAdmin) {
           return false;
         }
         return true;
@@ -222,10 +176,7 @@ export function Sidebar() {
           return {
             ...item,
             children: item.children.filter((child) => {
-              if (child.ownerOnly && !isOwner) {
-                return false;
-              }
-              if (child.adminOnly && !isAdmin) {
+              if (child.superAdminOnly && !isSuperAdmin) {
                 return false;
               }
               if (child.permission && !hasPermission(child.permission)) {
@@ -236,15 +187,8 @@ export function Sidebar() {
           };
         }
         return item;
-      })
-      .filter((item) => {
-        // Remove items with no children after filtering
-        if (item.children && item.children.length === 0) {
-          return false;
-        }
-        return true;
       });
-  }, [hasPermission, isOwner, isAdmin]);
+  }, [hasPermission, isSuperAdmin]);
 
   const toggleExpanded = (label: string) => {
     setExpandedItems((prev) =>
@@ -265,16 +209,9 @@ export function Sidebar() {
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-orange">
-            <Rocket className="h-5 w-5 text-primary-foreground" />
+            <Flame className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold leading-tight">LaunchPad</span>
-            {organization && (
-              <span className="text-xs text-muted-foreground truncate max-w-32">
-                {organization.name}
-              </span>
-            )}
-          </div>
+          <span className="text-lg font-bold">Prometheus Admin</span>
         </div>
 
         {/* Navigation */}
@@ -352,7 +289,7 @@ export function Sidebar() {
         </nav>
 
         {/* External Portal Link */}
-        {hasPermission("creators") && (
+        {(canAccessCRM || hasPermission("partners")) && (
           <div className="border-t border-white/10 p-4">
             <a
               href="/creator"
@@ -361,7 +298,7 @@ export function Sidebar() {
               className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-background/50 hover:text-foreground transition-smooth"
             >
               <div className="flex items-center gap-3">
-                <UsersRound className="h-5 w-5" />
+                <Handshake className="h-5 w-5" />
                 Creator Portal
               </div>
               <ExternalLink className="h-4 w-4" />
