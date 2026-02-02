@@ -63,6 +63,11 @@ import { OrganizationSettingsPage } from "@/pages/organization/OrganizationSetti
 import { BillingPage } from "@/pages/billing/BillingPage";
 import { PlansPage } from "@/pages/billing/PlansPage";
 
+// App Launch Pages
+import { AppLaunchDashboard } from "@/pages/app-launch/AppLaunchDashboard";
+import { AppProjectPage } from "@/pages/app-launch/AppProjectPage";
+import { AIAssistantPage } from "@/pages/app-launch/AIAssistantPage";
+
 // Creator Portal Pages
 import CreatorLogin from "@/pages/creator-portal/CreatorLogin";
 import CreatorDashboard from "@/pages/creator-portal/CreatorDashboard";
@@ -409,6 +414,20 @@ export const router = createBrowserRouter([
             <AthleteDetailPage />
           </PermissionGuard>
         ),
+      },
+
+      // App Launch
+      {
+        path: "app-launch",
+        element: <AppLaunchDashboard />,
+      },
+      {
+        path: "app-launch/project/:id",
+        element: <AppProjectPage />,
+      },
+      {
+        path: "app-launch/assistant",
+        element: <AIAssistantPage />,
       },
 
       // Security (Owner/Admin only)

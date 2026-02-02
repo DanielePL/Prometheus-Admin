@@ -21,6 +21,7 @@ import {
   Shield,
   Settings,
   UsersRound,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
@@ -51,6 +52,14 @@ const allNavigation: NavItem[] = [
     icon: LayoutDashboard,
     href: "/",
     permission: "dashboard",
+  },
+  {
+    label: "App Launch",
+    icon: Sparkles,
+    children: [
+      { label: "Overview", href: "/app-launch" },
+      { label: "AI Assistant", href: "/app-launch/assistant" },
+    ],
   },
   {
     label: "Costs",
