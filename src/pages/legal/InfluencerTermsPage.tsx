@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Rocket, ArrowLeft, FileText, Scale, Shield, Clock, Ban, AlertTriangle, CheckCircle } from "lucide-react";
+import { Flame, ArrowLeft, FileText, Scale, Shield, Clock, Ban, AlertTriangle, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import gradientBg from "@/assets/gradient-bg.jpg";
@@ -22,12 +22,12 @@ export function InfluencerTermsPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 glass border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Rocket className="h-5 w-5 text-primary-foreground" />
+              <Flame className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="font-bold text-lg">LaunchPad</span>
-          </Link>
+            <span className="font-bold text-lg">Prometheus</span>
+          </div>
           <Link to="/creator/login">
             <Button variant="outline" size="sm" className="rounded-xl">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -111,7 +111,7 @@ export function InfluencerTermsPage() {
                 <p>
                   2.1 The subject matter of this agreement is the facilitation of advertising
                   partnerships between the Influencer and advertising clients (hereinafter "Brands")
-                  by the Agency, as well as the provision of the LaunchPad platform.
+                  by the Agency, as well as the provision of the Prometheus platform.
                 </p>
                 <p>
                   2.2 The Influencer agrees to create promotional content in accordance with the
@@ -333,7 +333,7 @@ export function InfluencerTermsPage() {
                   8.5 Further information on data protection can be found in our separate
                   Privacy Policy at{" "}
                   <Link to="/legal/privacy" className="text-primary hover:underline">
-                    launchpad.app/legal/privacy
+                    prometheus.coach/legal/privacy
                   </Link>.
                 </p>
               </div>
