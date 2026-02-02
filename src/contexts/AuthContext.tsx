@@ -41,6 +41,8 @@ interface AuthContextType {
   // Role & Permission Checks
   isOwner: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  canAccessCRM: boolean;
   role: OrganizationRole | null;
   permissions: Permission[];
   sensitivePermissions: SensitivePermission[];
@@ -49,6 +51,7 @@ interface AuthContextType {
   hasRole: (role: OrganizationRole | OrganizationRole[]) => boolean;
 
   // Auth Actions
+  login: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (
     email: string,
@@ -202,9 +205,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const role = membership?.role ?? null;
   const isOwner = role === "owner";
   const isAdmin = role === "owner" || role === "admin";
+  const isSuperAdmin = isOwner; // Owner has super admin privileges
+  const canAccessCRM = isOwner || isAdmin; // Owners and admins can access CRM
 
-  // Get permissions based on role
-  const permissions: Permission[] = role ? ROLE_PERMISSIONS[role] : [];
+  // Get permissions based on role - map org roles to admin permissions
+  const rolePermissionMap: Record<OrganizationRole, Permission[]> = {
+    owner: ROLE_PERMISSIONS.super_admin,
+    admin: ROLE_PERMISSIONS.admin,
+    member: ROLE_PERMISSIONS.campus,
+    viewer: ["dashboard"],
+  };
+  const permissions: Permission[] = role ? rolePermissionMap[role] : [];
   const sensitivePermissions: SensitivePermission[] = role
     ? ROLE_SENSITIVE_PERMISSIONS[role]
     : [];
@@ -465,6 +476,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Role & Permissions
     isOwner,
     isAdmin,
+    isSuperAdmin,
+    canAccessCRM,
     role,
     permissions,
     sensitivePermissions,
@@ -473,6 +486,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasRole,
 
     // Auth Actions
+    login: signIn, // Alias for backwards compatibility
     signIn,
     signUp,
     signOut,

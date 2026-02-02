@@ -4,10 +4,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/api/supabaseClient";
 import {
   type OrganizationRole,
+  type Permission,
   TOP_LEVEL_PERMISSIONS,
   ROLE_PERMISSIONS,
 } from "@/api/types/permissions";
 import { cn } from "@/lib/utils";
+
+// Map org roles to admin permission sets
+const ORG_ROLE_PERMISSIONS: Record<OrganizationRole, Permission[]> = {
+  owner: ROLE_PERMISSIONS.super_admin,
+  admin: ROLE_PERMISSIONS.admin,
+  member: ROLE_PERMISSIONS.campus,
+  viewer: ["dashboard"],
+};
 
 interface MemberWithRole {
   id: string;
@@ -125,7 +134,7 @@ export function AdminPermissionsPage() {
         {(Object.keys(roleConfig) as OrganizationRole[]).map((role) => {
           const config = roleConfig[role];
           const Icon = config.icon;
-          const permissions = ROLE_PERMISSIONS[role];
+          const permissions = ORG_ROLE_PERMISSIONS[role];
           const memberCount = members.filter(m => m.role === role).length;
 
           return (
@@ -171,7 +180,7 @@ export function AdminPermissionsPage() {
 
           <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
             {TOP_LEVEL_PERMISSIONS.map((config) => {
-              const hasPermission = ROLE_PERMISSIONS[selectedRole].includes(config.id);
+              const hasPermission = ORG_ROLE_PERMISSIONS[selectedRole].includes(config.id);
               return (
                 <div
                   key={config.id}

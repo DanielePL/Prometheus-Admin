@@ -73,6 +73,8 @@ export type Permission =
   | "partners"
   | "partners:payouts"
   | "partners:create"
+  | "creators"
+  | "creators:create"
   | "employees"
   | "performance"
   | "users"
@@ -82,6 +84,8 @@ export type Permission =
   | "influencers"
   | "ambassadors"
   | "lab"
+  | "storage"
+  | "tasks"
   | "settings";
 
 // Predefined permissions for each role
@@ -212,3 +216,97 @@ export function hasSensitivePermission(
   if (isSuperAdmin) return true;
   return sensitivePermissions.includes(required);
 }
+
+// =============================================================================
+// Organization & Multi-tenant Types
+// =============================================================================
+
+export type OrganizationRole = "owner" | "admin" | "member" | "viewer";
+
+export type SubscriptionPlan = "starter" | "professional" | "enterprise";
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled" | "unpaid";
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url?: string;
+  subscription_plan: SubscriptionPlan;
+  subscription_status: SubscriptionStatus;
+  trial_ends_at?: string;
+  max_seats?: number;
+  max_creators?: number;
+  stripe_customer_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface OrganizationMember {
+  id: string;
+  organization_id: string;
+  user_id: string;
+  role: OrganizationRole;
+  created_at: string;
+  updated_at: string;
+  organization?: Organization;
+}
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: OrganizationRole;
+  token: string;
+  expires_at: string;
+  created_at: string;
+  invited_by: string;
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  current_organization_id?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Role-based sensitive permissions
+export const ROLE_SENSITIVE_PERMISSIONS: Record<OrganizationRole, SensitivePermission[]> = {
+  owner: ["compensation:view", "compensation:edit"],
+  admin: ["compensation:view"],
+  member: [],
+  viewer: [],
+};
+
+// Plan limits
+export const PLAN_LIMITS: Record<SubscriptionPlan, {
+  maxMembers: number;
+  maxProjects: number;
+  maxSeats: number;
+  maxCreators: number;
+  features: string[];
+}> = {
+  starter: {
+    maxMembers: 3,
+    maxProjects: 5,
+    maxSeats: 3,
+    maxCreators: 10,
+    features: ["basic_analytics", "email_support"],
+  },
+  professional: {
+    maxMembers: 10,
+    maxProjects: 25,
+    maxSeats: 10,
+    maxCreators: 50,
+    features: ["advanced_analytics", "priority_support", "api_access"],
+  },
+  enterprise: {
+    maxMembers: -1, // unlimited
+    maxProjects: -1,
+    maxSeats: -1,
+    maxCreators: -1,
+    features: ["custom_analytics", "dedicated_support", "api_access", "sso", "audit_logs"],
+  },
+};
