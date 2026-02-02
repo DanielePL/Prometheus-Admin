@@ -11,8 +11,8 @@ import { LoginPage } from "@/pages/auth/LoginPage";
 import { SignUpPage } from "@/pages/auth/SignUpPage";
 import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
 
-// Onboarding Pages
-import { CreateOrganizationPage } from "@/pages/onboarding/CreateOrganizationPage";
+// Onboarding Pages - not used in Prometheus Admin
+// import { CreateOrganizationPage } from "@/pages/onboarding/CreateOrganizationPage";
 
 // Admin Pages
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
@@ -96,10 +96,10 @@ export const router = createBrowserRouter([
     element: <InfluencerTermsPage />,
   },
 
-  // Onboarding Routes
+  // Onboarding Routes - redirect to login (not needed for Prometheus Admin)
   {
     path: "/onboarding/create-organization",
-    element: <CreateOrganizationPage />,
+    element: <Navigate to="/login" replace />,
   },
 
   // Main App Routes (protected)
