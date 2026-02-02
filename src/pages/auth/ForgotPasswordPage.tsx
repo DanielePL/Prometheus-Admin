@@ -1,26 +1,20 @@
 import { useState } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Rocket, Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
+import { AlertCircle, Rocket, Mail, ArrowLeft, Check } from "lucide-react";
 import { useTheme } from "next-themes";
 import gradientBg from "@/assets/gradient-bg.jpg";
 import gradientBgDark from "@/assets/gradient-bg-dark.png";
 
-export function LoginPage() {
+export function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const [isSuccess, setIsSuccess] = useState(false);
+  const { resetPassword } = useAuth();
   const { theme } = useTheme();
-
-  // Get redirect path from state or default to dashboard
-  const from = location.state?.from?.pathname || "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,11 +22,11 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const { error } = await signIn(email, password);
+      const { error } = await resetPassword(email);
       if (error) {
         setError(error.message);
       } else {
-        navigate(from, { replace: true });
+        setIsSuccess(true);
       }
     } catch {
       setError("An unexpected error occurred. Please try again.");
@@ -40,6 +34,40 @@ export function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Success state
+  if (isSuccess) {
+    return (
+      <div
+        className="min-h-screen w-full flex items-center justify-center p-4"
+        style={{
+          backgroundImage: `url(${theme === "dark" ? gradientBgDark : gradientBg})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+        }}
+      >
+        <div className="w-full max-w-md glass rounded-2xl p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-green-500/20">
+            <Check className="h-8 w-8 text-green-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-foreground mb-2">Check your email</h1>
+          <p className="text-muted-foreground mb-6">
+            If an account exists for <strong>{email}</strong>, we've sent instructions to reset your password.
+          </p>
+          <Link to="/login">
+            <Button
+              className="w-full h-12 text-base font-semibold rounded-xl"
+              variant="outline"
+            >
+              <ArrowLeft className="mr-2 h-5 w-5" />
+              Back to Sign In
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -58,10 +86,10 @@ export function LoginPage() {
             <Rocket className="h-8 w-8 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">
-            LaunchPad
+            Reset your password
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Sign in to your account
+            Enter your email and we'll send you a reset link
           </p>
         </div>
 
@@ -87,78 +115,31 @@ export function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 rounded-xl pl-10"
                 autoComplete="email"
+                autoFocus
                 required
               />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label htmlFor="password" className="text-sm font-medium text-foreground">
-                Password
-              </label>
-              <Link
-                to="/forgot-password"
-                className="text-sm text-primary hover:text-primary/80 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 rounded-xl pl-10 pr-12"
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-              </button>
             </div>
           </div>
 
           <Button
             type="submit"
             className="w-full h-12 text-base font-semibold rounded-xl glow-orange transition-smooth"
-            disabled={isLoading || !email || !password}
+            disabled={isLoading || !email}
           >
-            {isLoading ? (
-              "Signing in..."
-            ) : (
-              <>
-                Sign In
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </>
-            )}
+            {isLoading ? "Sending..." : "Send Reset Link"}
           </Button>
         </form>
 
-        {/* Sign Up Link */}
+        {/* Back to Login */}
         <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              to="/signup"
-              className="text-primary hover:text-primary/80 font-medium transition-colors"
-            >
-              Start your free trial
-            </Link>
-          </p>
+          <Link
+            to="/login"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Sign In
+          </Link>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Launch your app. Manage your creators. Grow your business.
-        </p>
       </div>
     </div>
   );

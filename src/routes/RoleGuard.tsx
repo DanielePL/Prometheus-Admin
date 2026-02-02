@@ -1,30 +1,34 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import type { UserRole } from "@/api/types/auth";
-import type { Permission } from "@/api/types/permissions";
+import type { Permission, OrganizationRole } from "@/api/types/permissions";
 import { Lock } from "lucide-react";
 
 interface RoleGuardProps {
   children: React.ReactNode;
-  allowedRoles: UserRole[];
+  allowedRoles: OrganizationRole[];
   fallbackPath?: string;
 }
 
 /**
  * Role-based route guard.
  * Redirects to fallbackPath if user doesn't have required role.
- * Admin users always have access to all routes.
+ * Owners always have access to all routes.
  */
 export function RoleGuard({
   children,
   allowedRoles,
   fallbackPath = "/",
 }: RoleGuardProps) {
-  const { user, isAuthenticated, hasRole } = useAuth();
+  const { user, isAuthenticated, hasRole, isOwner } = useAuth();
 
   // Not authenticated - redirect to login
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Owners have access to everything
+  if (isOwner) {
+    return <>{children}</>;
   }
 
   // Check if user has required role
@@ -37,34 +41,44 @@ export function RoleGuard({
 
 interface PermissionGuardProps {
   children: React.ReactNode;
-  permission: Permission;
-  superAdminOnly?: boolean;
+  permission?: Permission;
+  ownerOnly?: boolean;
+  adminOnly?: boolean;
   showAccessDenied?: boolean;
 }
 
 /**
  * Permission-based route guard.
  * Shows access denied message or redirects if user doesn't have required permission.
- * Super admin always has access.
+ * Owner always has access.
  */
 export function PermissionGuard({
   children,
   permission,
-  superAdminOnly = false,
+  ownerOnly = false,
+  adminOnly = false,
   showAccessDenied = true,
 }: PermissionGuardProps) {
-  const { hasPermission, isSuperAdmin } = useAuth();
+  const { hasPermission, isOwner, isAdmin } = useAuth();
 
-  // Check super admin requirement
-  if (superAdminOnly && !isSuperAdmin) {
+  // Check owner requirement
+  if (ownerOnly && !isOwner) {
     if (showAccessDenied) {
-      return <AccessDenied message="Only Super Admin has access to this page." />;
+      return <AccessDenied message="Only organization owners have access to this page." />;
+    }
+    return <Navigate to="/" replace />;
+  }
+
+  // Check admin requirement
+  if (adminOnly && !isAdmin) {
+    if (showAccessDenied) {
+      return <AccessDenied message="Only administrators have access to this page." />;
     }
     return <Navigate to="/" replace />;
   }
 
   // Check permission
-  if (!hasPermission(permission)) {
+  if (permission && !hasPermission(permission)) {
     if (showAccessDenied) {
       return <AccessDenied message="You don't have permission for this page." />;
     }

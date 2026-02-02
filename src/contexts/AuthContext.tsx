@@ -1,276 +1,495 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import type { User, UserRole } from "@/api/types/auth";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
+import type { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/api/supabaseClient";
 import {
   type Permission,
   type SensitivePermission,
-  type AdminPermissions,
-  type AdminAccount,
-  ADMIN_EMAILS,
-  ADMIN_ACCOUNTS,
+  type OrganizationRole,
+  type Organization,
+  type OrganizationMember,
+  type UserProfile,
   ROLE_PERMISSIONS,
-  isValidAdminEmail,
-  isSuperAdmin as checkIsSuperAdmin,
+  ROLE_SENSITIVE_PERMISSIONS,
   hasPermission as checkHasPermission,
   hasSensitivePermission as checkHasSensitivePermission,
 } from "@/api/types/permissions";
 
-// Storage keys
-const AUTH_STORAGE_KEY = "admin_auth";
-const PERMISSIONS_STORAGE_KEY = "admin_permissions";
-
-interface StoredAuth {
-  email: string;
-  name: string;
-  role: AdminAccount["role"];
-}
+// =============================================================================
+// Types
+// =============================================================================
 
 interface AuthContextType {
+  // Supabase Auth
   user: User | null;
-  token: string | null;
+  session: Session | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-  isSalesUser: boolean;
-  isInfluencerManager: boolean;
-  isInfluencer: boolean;
-  canAccessCRM: boolean;
-  canAccessInfluencers: boolean;
 
-  // Permission-based access
+  // Organization Context
+  organization: Organization | null;
+  membership: OrganizationMember | null;
+  userProfile: UserProfile | null;
+  organizations: Organization[]; // All orgs user belongs to
+
+  // Role & Permission Checks
+  isOwner: boolean;
+  isAdmin: boolean;
+  role: OrganizationRole | null;
   permissions: Permission[];
   sensitivePermissions: SensitivePermission[];
   hasPermission: (permission: Permission) => boolean;
   hasSensitivePermission: (permission: SensitivePermission) => boolean;
+  hasRole: (role: OrganizationRole | OrganizationRole[]) => boolean;
 
-  // Permission management (super admin only)
-  getAllAdminPermissions: () => AdminPermissions[];
-  updateAdminPermissions: (email: string, permissions: Permission[], sensitivePermissions: SensitivePermission[]) => void;
+  // Auth Actions
+  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string
+  ) => Promise<{ error: Error | null }>;
+  signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 
-  hasRole: (role: UserRole | UserRole[]) => boolean;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  // Organization Actions
+  switchOrganization: (orgId: string) => Promise<void>;
+  createOrganization: (
+    name: string,
+    slug: string
+  ) => Promise<{ organization: Organization | null; error: Error | null }>;
+  acceptInvitation: (
+    token: string
+  ) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Load stored auth from localStorage
-function loadStoredAuth(): StoredAuth | null {
-  try {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error("Failed to load auth:", e);
-  }
-  return null;
-}
-
-// Save auth to localStorage
-function saveStoredAuth(auth: StoredAuth): void {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(auth));
-}
-
-// Clear auth from localStorage
-function clearStoredAuth(): void {
-  localStorage.removeItem(AUTH_STORAGE_KEY);
-}
-
-// Load permissions from localStorage
-function loadStoredPermissions(): Record<string, AdminPermissions> {
-  try {
-    const stored = localStorage.getItem(PERMISSIONS_STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (e) {
-    console.error("Failed to load permissions:", e);
-  }
-  return {};
-}
-
-// Save permissions to localStorage
-function saveStoredPermissions(permissions: Record<string, AdminPermissions>): void {
-  localStorage.setItem(PERMISSIONS_STORAGE_KEY, JSON.stringify(permissions));
-}
+// =============================================================================
+// Provider Component
+// =============================================================================
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Auth State
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [storedPermissions, setStoredPermissions] = useState<Record<string, AdminPermissions>>({});
 
-  // Load auth on mount
-  useEffect(() => {
-    const storedAuth = loadStoredAuth();
-    if (storedAuth) {
-      setUser({
-        id: storedAuth.email,
-        email: storedAuth.email,
-        role: "admin",
-        name: storedAuth.name,
-      });
-      setToken("prometheus_admin_token");
+  // Organization State
+  const [organization, setOrganization] = useState<Organization | null>(null);
+  const [membership, setMembership] = useState<OrganizationMember | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[]>([]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch User Data (Profile, Memberships, Organizations)
+  // ---------------------------------------------------------------------------
+
+  const fetchUserData = useCallback(async (userId: string) => {
+    if (!supabase) return;
+
+    try {
+      // Fetch user profile
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (profile) {
+        setUserProfile(profile);
+      }
+
+      // Fetch all organization memberships
+      const { data: memberships } = await supabase
+        .from("organization_members")
+        .select(`
+          *,
+          organization:organizations(*)
+        `)
+        .eq("user_id", userId);
+
+      if (memberships && memberships.length > 0) {
+        // Extract organizations
+        const orgs = memberships
+          .map((m) => m.organization as Organization)
+          .filter(Boolean);
+        setOrganizations(orgs);
+
+        // Determine current organization
+        let currentOrgId = profile?.current_organization_id;
+
+        // If no current org set, use first one
+        if (!currentOrgId && orgs.length > 0) {
+          currentOrgId = orgs[0].id;
+        }
+
+        // Find the membership for current org
+        const currentMembership = memberships.find(
+          (m) => m.organization_id === currentOrgId
+        );
+
+        if (currentMembership) {
+          setMembership(currentMembership);
+          setOrganization(currentMembership.organization as Organization);
+
+          // Update profile if current_organization_id was not set
+          if (!profile?.current_organization_id && supabase) {
+            await supabase
+              .from("user_profiles")
+              .update({ current_organization_id: currentOrgId })
+              .eq("id", userId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching user data:", error);
     }
-    setStoredPermissions(loadStoredPermissions());
-    setIsLoading(false);
   }, []);
 
-  // Get current user's permissions
-  const userEmail = user?.email || "";
-  const userIsSuperAdmin = checkIsSuperAdmin(userEmail);
+  // ---------------------------------------------------------------------------
+  // Initialize Auth & Listen for Changes
+  // ---------------------------------------------------------------------------
 
-  // Find account for current user
-  const currentAccount = ADMIN_ACCOUNTS.find(acc => acc.email === userEmail);
-  const accountRole = currentAccount?.role || "admin";
+  useEffect(() => {
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        fetchUserData(session.user.id);
+      }
+
+      setIsLoading(false);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (event === "SIGNED_IN" && session?.user) {
+        await fetchUserData(session.user.id);
+      } else if (event === "SIGNED_OUT") {
+        setOrganization(null);
+        setMembership(null);
+        setUserProfile(null);
+        setOrganizations([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchUserData]);
+
+  // ---------------------------------------------------------------------------
+  // Computed Values
+  // ---------------------------------------------------------------------------
+
+  const role = membership?.role ?? null;
+  const isOwner = role === "owner";
+  const isAdmin = role === "owner" || role === "admin";
 
   // Get permissions based on role
-  const permissions: Permission[] = ROLE_PERMISSIONS[accountRole] || [];
+  const permissions: Permission[] = role ? ROLE_PERMISSIONS[role] : [];
+  const sensitivePermissions: SensitivePermission[] = role
+    ? ROLE_SENSITIVE_PERMISSIONS[role]
+    : [];
 
-  const sensitivePermissions: SensitivePermission[] = userIsSuperAdmin
-    ? ["compensation:view", "compensation:edit"]
-    : (storedPermissions[userEmail]?.sensitive_permissions || []);
+  // ---------------------------------------------------------------------------
+  // Permission Helpers
+  // ---------------------------------------------------------------------------
 
-  const hasRole = (role: UserRole | UserRole[]): boolean => {
-    if (!user) return false;
-    const roles = Array.isArray(role) ? role : [role];
-    if (user.role === "admin") return true;
-    return roles.includes(user.role);
-  };
-
-  const hasPermission = (permission: Permission): boolean => {
-    return checkHasPermission(permissions, permission, userIsSuperAdmin);
-  };
-
-  const hasSensitivePermission = (permission: SensitivePermission): boolean => {
-    return checkHasSensitivePermission(sensitivePermissions, permission, userIsSuperAdmin);
-  };
-
-  // Get all admin permissions (for settings page)
-  const getAllAdminPermissions = (): AdminPermissions[] => {
-    return ADMIN_ACCOUNTS.map(account => ({
-      email: account.email,
-      permissions: ROLE_PERMISSIONS[account.role],
-      sensitive_permissions: account.role === "super_admin"
-        ? ["compensation:view", "compensation:edit"] as SensitivePermission[]
-        : [],
-      updated_at: "",
-      updated_by: "",
-    }));
-  };
-
-  // Update admin permissions (super admin only)
-  const updateAdminPermissions = (
-    email: string,
-    newPermissions: Permission[],
-    newSensitivePermissions: SensitivePermission[]
-  ): void => {
-    if (!userIsSuperAdmin) {
-      console.error("Only super admin can update permissions");
-      return;
-    }
-
-    if (!isValidAdminEmail(email) || email === ADMIN_EMAILS.SUPER_ADMIN) {
-      console.error("Cannot update permissions for this email");
-      return;
-    }
-
-    const updated: AdminPermissions = {
-      email: email as typeof ADMIN_EMAILS.ADMIN,
-      permissions: newPermissions,
-      sensitive_permissions: newSensitivePermissions,
-      updated_at: new Date().toISOString(),
-      updated_by: userEmail,
-    };
-
-    const newStoredPermissions = {
-      ...storedPermissions,
-      [email]: updated,
-    };
-
-    setStoredPermissions(newStoredPermissions);
-    saveStoredPermissions(newStoredPermissions);
-  };
-
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Find account by email
-    const account = ADMIN_ACCOUNTS.find(acc => acc.email === email);
-
-    if (!account) {
-      return false;
-    }
-
-    // Verify password
-    if (account.password !== password) {
-      return false;
-    }
-
-    // Set user state
-    setUser({
-      id: account.email,
-      email: account.email,
-      role: "admin",
-      name: account.name,
-    });
-    setToken("prometheus_admin_token");
-
-    // Save to localStorage
-    saveStoredAuth({
-      email: account.email,
-      name: account.name,
-      role: account.role,
-    });
-
-    return true;
-  };
-
-  const logout = () => {
-    setUser(null);
-    setToken(null);
-    clearStoredAuth();
-  };
-
-  const isAdmin = user?.role === "admin";
-  const isSalesUser = user?.role === "sales" || user?.role === "partner" || isAdmin;
-  const isInfluencerManager = user?.role === "influencer_manager";
-  const isInfluencer = user?.role === "influencer";
-
-  // CRM access based on permissions
-  const canAccessCRM = hasPermission("dashboard") || hasPermission("costs") || hasPermission("revenue");
-
-  // Influencers access
-  const canAccessInfluencers = hasPermission("influencers") || isInfluencerManager;
-
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isLoading,
-        isAuthenticated: !!token && !!user,
-        isAdmin,
-        isSuperAdmin: userIsSuperAdmin,
-        isSalesUser,
-        isInfluencerManager,
-        isInfluencer,
-        canAccessCRM,
-        canAccessInfluencers,
-        permissions,
-        sensitivePermissions,
-        hasPermission,
-        hasSensitivePermission,
-        getAllAdminPermissions,
-        updateAdminPermissions,
-        hasRole,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+  const hasPermission = useCallback(
+    (permission: Permission): boolean => {
+      return checkHasPermission(permissions, permission, isOwner);
+    },
+    [permissions, isOwner]
   );
+
+  const hasSensitivePermission = useCallback(
+    (permission: SensitivePermission): boolean => {
+      return checkHasSensitivePermission(sensitivePermissions, permission, isOwner);
+    },
+    [sensitivePermissions, isOwner]
+  );
+
+  const hasRole = useCallback(
+    (checkRole: OrganizationRole | OrganizationRole[]): boolean => {
+      if (!role) return false;
+      const roles = Array.isArray(checkRole) ? checkRole : [checkRole];
+      return roles.includes(role);
+    },
+    [role]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Auth Actions
+  // ---------------------------------------------------------------------------
+
+  const signIn = useCallback(
+    async (email: string, password: string): Promise<{ error: Error | null }> => {
+      if (!supabase) {
+        return { error: new Error("Supabase not configured") };
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      return { error: error ? new Error(error.message) : null };
+    },
+    []
+  );
+
+  const signUp = useCallback(
+    async (
+      email: string,
+      password: string,
+      fullName?: string
+    ): Promise<{ error: Error | null }> => {
+      if (!supabase) {
+        return { error: new Error("Supabase not configured") };
+      }
+
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
+        },
+      });
+
+      return { error: error ? new Error(error.message) : null };
+    },
+    []
+  );
+
+  const signOut = useCallback(async (): Promise<void> => {
+    if (!supabase) return;
+    await supabase.auth.signOut();
+  }, []);
+
+  const resetPassword = useCallback(
+    async (email: string): Promise<{ error: Error | null }> => {
+      if (!supabase) {
+        return { error: new Error("Supabase not configured") };
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      return { error: error ? new Error(error.message) : null };
+    },
+    []
+  );
+
+  // ---------------------------------------------------------------------------
+  // Organization Actions
+  // ---------------------------------------------------------------------------
+
+  const switchOrganization = useCallback(
+    async (orgId: string): Promise<void> => {
+      if (!supabase || !user) return;
+
+      // Find the membership for this org
+      const newMembership = organizations.find((o) => o.id === orgId);
+      if (!newMembership) return;
+
+      // Update profile with new current org
+      await supabase
+        .from("user_profiles")
+        .update({ current_organization_id: orgId })
+        .eq("id", user.id);
+
+      // Refetch to update state
+      await fetchUserData(user.id);
+    },
+    [user, organizations, fetchUserData]
+  );
+
+  const createOrganization = useCallback(
+    async (
+      name: string,
+      slug: string
+    ): Promise<{ organization: Organization | null; error: Error | null }> => {
+      if (!supabase || !user) {
+        return { organization: null, error: new Error("Not authenticated") };
+      }
+
+      try {
+        // Create organization
+        const { data: org, error: orgError } = await supabase
+          .from("organizations")
+          .insert({ name, slug })
+          .select()
+          .single();
+
+        if (orgError) {
+          return { organization: null, error: new Error(orgError.message) };
+        }
+
+        // Add user as owner
+        const { error: memberError } = await supabase
+          .from("organization_members")
+          .insert({
+            organization_id: org.id,
+            user_id: user.id,
+            role: "owner",
+          });
+
+        if (memberError) {
+          // Rollback org creation
+          await supabase.from("organizations").delete().eq("id", org.id);
+          return { organization: null, error: new Error(memberError.message) };
+        }
+
+        // Update user's current org
+        await supabase
+          .from("user_profiles")
+          .update({ current_organization_id: org.id })
+          .eq("id", user.id);
+
+        // Refetch user data
+        await fetchUserData(user.id);
+
+        return { organization: org, error: null };
+      } catch (err) {
+        return {
+          organization: null,
+          error: err instanceof Error ? err : new Error("Unknown error"),
+        };
+      }
+    },
+    [user, fetchUserData]
+  );
+
+  const acceptInvitation = useCallback(
+    async (token: string): Promise<{ error: Error | null }> => {
+      if (!supabase || !user) {
+        return { error: new Error("Not authenticated") };
+      }
+
+      try {
+        // Find invitation by token
+        const { data: invitation, error: inviteError } = await supabase
+          .from("organization_invitations")
+          .select("*")
+          .eq("token", token)
+          .single();
+
+        if (inviteError || !invitation) {
+          return { error: new Error("Invalid or expired invitation") };
+        }
+
+        // Check if invitation has expired
+        if (new Date(invitation.expires_at) < new Date()) {
+          return { error: new Error("Invitation has expired") };
+        }
+
+        // Check if user email matches invitation
+        if (invitation.email !== user.email) {
+          return { error: new Error("Invitation is for a different email address") };
+        }
+
+        // Add user to organization
+        const { error: memberError } = await supabase
+          .from("organization_members")
+          .insert({
+            organization_id: invitation.organization_id,
+            user_id: user.id,
+            role: invitation.role,
+          });
+
+        if (memberError) {
+          // Might already be a member
+          if (memberError.code === "23505") {
+            return { error: new Error("You are already a member of this organization") };
+          }
+          return { error: new Error(memberError.message) };
+        }
+
+        // Delete the invitation
+        await supabase
+          .from("organization_invitations")
+          .delete()
+          .eq("id", invitation.id);
+
+        // Refetch user data
+        await fetchUserData(user.id);
+
+        return { error: null };
+      } catch (err) {
+        return {
+          error: err instanceof Error ? err : new Error("Unknown error"),
+        };
+      }
+    },
+    [user, fetchUserData]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Context Value
+  // ---------------------------------------------------------------------------
+
+  const value: AuthContextType = {
+    // Auth State
+    user,
+    session,
+    isLoading,
+    isAuthenticated: !!session && !!user,
+
+    // Organization State
+    organization,
+    membership,
+    userProfile,
+    organizations,
+
+    // Role & Permissions
+    isOwner,
+    isAdmin,
+    role,
+    permissions,
+    sensitivePermissions,
+    hasPermission,
+    hasSensitivePermission,
+    hasRole,
+
+    // Auth Actions
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+
+    // Organization Actions
+    switchOrganization,
+    createOrganization,
+    acceptInvitation,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
+
+// =============================================================================
+// Hook
+// =============================================================================
 
 export function useAuth() {
   const context = useContext(AuthContext);

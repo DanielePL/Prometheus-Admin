@@ -1,232 +1,231 @@
-import { useState } from "react";
-import { Shield, Check, AlertTriangle, Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { Shield, Lock, Users, Crown, ShieldCheck, User, Eye } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/api/supabaseClient";
 import {
-  type Permission,
-  type SensitivePermission,
-  ADMIN_EMAILS,
+  type OrganizationRole,
   TOP_LEVEL_PERMISSIONS,
+  ROLE_PERMISSIONS,
 } from "@/api/types/permissions";
 import { cn } from "@/lib/utils";
 
-interface EditModalProps {
-  email: string;
-  currentPermissions: Permission[];
-  currentSensitivePermissions: SensitivePermission[];
-  onSave: (permissions: Permission[], sensitivePermissions: SensitivePermission[]) => void;
-  onClose: () => void;
+interface MemberWithRole {
+  id: string;
+  user_id: string;
+  role: OrganizationRole;
+  user_profile?: {
+    email: string;
+    full_name: string | null;
+  };
 }
 
-function EditPermissionsModal({
-  email,
-  currentPermissions,
-  currentSensitivePermissions,
-  onSave,
-  onClose,
-}: EditModalProps) {
-  const [permissions, setPermissions] = useState<Permission[]>(currentPermissions);
-  const [sensitivePermissions, setSensitivePermissions] = useState<SensitivePermission[]>(
-    currentSensitivePermissions
-  );
-
-  const togglePermission = (permission: Permission) => {
-    setPermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission]
-    );
-  };
-
-  const toggleSensitivePermission = (permission: SensitivePermission) => {
-    setSensitivePermissions((prev) =>
-      prev.includes(permission)
-        ? prev.filter((p) => p !== permission)
-        : [...prev, permission]
-    );
-  };
-
-  const handleSave = () => {
-    onSave(permissions, sensitivePermissions);
-    onClose();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-2xl bg-card p-6 shadow-xl">
-        <div className="flex items-center gap-2 mb-6">
-          <Shield className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold">Permissions: {email}</h2>
-        </div>
-
-        {/* Standard Permissions */}
-        <div className="mb-6">
-          <h3 className="text-sm font-medium text-muted-foreground mb-3">
-            STANDARD AREAS
-          </h3>
-          <div className="space-y-2">
-            {TOP_LEVEL_PERMISSIONS.map((config) => (
-              <label
-                key={config.id}
-                className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={permissions.includes(config.id)}
-                  onChange={() => togglePermission(config.id)}
-                  className="h-4 w-4 rounded border-muted-foreground/30 text-primary focus:ring-primary"
-                />
-                <span className="text-sm">{config.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        {/* Sensitive Permissions */}
-        <div className="mb-6 p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            <h3 className="text-sm font-medium text-red-500">
-              HIGHLY CONFIDENTIAL
-            </h3>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">
-            Access to salaries, bonuses and revenue shares
-          </p>
-          <label className="flex items-center gap-3 rounded-lg p-2 hover:bg-red-500/10 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={sensitivePermissions.includes("compensation:view")}
-              onChange={() => toggleSensitivePermission("compensation:view")}
-              className="h-4 w-4 rounded border-red-500/30 text-red-500 focus:ring-red-500"
-            />
-            <span className="text-sm">View compensation</span>
-          </label>
-        </div>
-
-        {/* Actions */}
-        <div className="flex gap-3 justify-end">
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            <Check className="h-4 w-4 mr-2" />
-            Save
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
+const roleConfig: Record<OrganizationRole, { icon: typeof User; color: string; label: string; description: string }> = {
+  owner: {
+    icon: Crown,
+    color: "text-yellow-500 bg-yellow-500/20",
+    label: "Owner",
+    description: "Full access to everything including billing and organization settings"
+  },
+  admin: {
+    icon: ShieldCheck,
+    color: "text-blue-500 bg-blue-500/20",
+    label: "Admin",
+    description: "Full access except billing and ownership transfer"
+  },
+  member: {
+    icon: User,
+    color: "text-green-500 bg-green-500/20",
+    label: "Member",
+    description: "Standard access to creators, tasks, and sales"
+  },
+  viewer: {
+    icon: Eye,
+    color: "text-gray-500 bg-gray-500/20",
+    label: "Viewer",
+    description: "Read-only access to dashboard and creators"
+  },
+};
 
 export function AdminPermissionsPage() {
-  const { isSuperAdmin, getAllAdminPermissions, updateAdminPermissions } = useAuth();
-  const [editingEmail, setEditingEmail] = useState<string | null>(null);
+  const { isOwner, organization } = useAuth();
+  const [members, setMembers] = useState<MemberWithRole[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [selectedRole, setSelectedRole] = useState<OrganizationRole | null>(null);
 
-  const adminPermissions = getAllAdminPermissions();
+  useEffect(() => {
+    if (!organization || !supabase) return;
 
-  const handleSave = (
-    email: string,
-    permissions: Permission[],
-    sensitivePermissions: SensitivePermission[]
-  ) => {
-    updateAdminPermissions(email, permissions, sensitivePermissions);
-    setEditingEmail(null);
-  };
+    const client = supabase; // Capture for TypeScript
 
-  // Only super admin can access this page
-  if (!isSuperAdmin) {
+    const fetchMembers = async () => {
+      setIsLoading(true);
+      const { data } = await client
+        .from("organization_members")
+        .select(`
+          id,
+          user_id,
+          role,
+          user_profile:user_profiles(email, full_name)
+        `)
+        .eq("organization_id", organization.id);
+
+      if (data) {
+        // Transform data to match our interface (user_profile is returned as array)
+        const transformed = data.map((d: { id: string; user_id: string; role: string; user_profile: { email: string; full_name: string | null }[] | null }) => ({
+          ...d,
+          user_profile: d.user_profile?.[0] || undefined,
+        }));
+        setMembers(transformed as MemberWithRole[]);
+      }
+      setIsLoading(false);
+    };
+
+    fetchMembers();
+  }, [organization]);
+
+  // Only owner can access this page
+  if (!isOwner) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <Lock className="h-16 w-16 text-muted-foreground/50 mb-4" />
         <h2 className="text-xl font-semibold">Access denied</h2>
         <p className="text-muted-foreground mt-2">
-          Only Super Admin can manage permissions.
+          Only organization owners can manage permissions.
         </p>
       </div>
     );
   }
 
-  const editingAdmin = adminPermissions.find((a) => a.email === editingEmail);
+  if (isLoading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-1/4"></div>
+          <div className="h-64 bg-muted rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Admin Permissions</h1>
-        <p className="text-muted-foreground">
-          Manage access rights for admin accounts
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Shield className="h-6 w-6" />
+          Role Permissions
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Understand what each role can do in your organization
         </p>
       </div>
 
-      {/* Admin List */}
-      <div className="space-y-4">
-        {adminPermissions.map((admin) => {
-          const isSuperAdminAccount = admin.email === ADMIN_EMAILS.SUPER_ADMIN;
-          const permissionCount = admin.permissions.length;
-          const hasSensitive = admin.sensitive_permissions.length > 0;
+      {/* Role Overview */}
+      <div className="grid gap-4 md:grid-cols-2">
+        {(Object.keys(roleConfig) as OrganizationRole[]).map((role) => {
+          const config = roleConfig[role];
+          const Icon = config.icon;
+          const permissions = ROLE_PERMISSIONS[role];
+          const memberCount = members.filter(m => m.role === role).length;
 
           return (
-            <div
-              key={admin.email}
+            <button
+              key={role}
+              onClick={() => setSelectedRole(selectedRole === role ? null : role)}
               className={cn(
-                "rounded-xl bg-card p-6",
-                isSuperAdminAccount && "border-2 border-primary/20"
+                "glass rounded-xl p-4 text-left transition-all",
+                selectedRole === role && "ring-2 ring-primary"
               )}
             >
               <div className="flex items-start justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{admin.email}</h3>
-                    {isSuperAdminAccount && (
-                      <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                        Super Admin
-                      </span>
-                    )}
-                    {hasSensitive && !isSuperAdminAccount && (
-                      <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
-                        Compensation
-                      </span>
-                    )}
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${config.color}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
-
-                  <div className="mt-2 text-sm text-muted-foreground">
-                    {isSuperAdminAccount ? (
-                      <span>Full access (not editable)</span>
-                    ) : (
-                      <span>
-                        Areas:{" "}
-                        {permissionCount === 0
-                          ? "None"
-                          : admin.permissions
-                              .filter((p) => !p.includes(":"))
-                              .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-                              .join(", ")}
-                      </span>
-                    )}
-                  </div>
-
-                  {admin.updated_at && !isSuperAdminAccount && (
-                    <p className="mt-1 text-xs text-muted-foreground/70">
-                      Last updated:{" "}
-                      {new Date(admin.updated_at).toLocaleDateString("en-US")}
+                  <div>
+                    <h3 className="font-semibold">{config.label}</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {memberCount} member{memberCount !== 1 ? "s" : ""}
                     </p>
-                  )}
+                  </div>
                 </div>
-
-                {!isSuperAdminAccount && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setEditingEmail(admin.email)}
-                  >
-                    Edit
-                  </Button>
-                )}
               </div>
-            </div>
+              <p className="text-sm text-muted-foreground mt-3">
+                {config.description}
+              </p>
+              <p className="text-xs text-primary mt-2">
+                {permissions.length} permissions
+              </p>
+            </button>
           );
         })}
+      </div>
+
+      {/* Selected Role Permissions */}
+      {selectedRole && (
+        <div className="glass rounded-xl p-6">
+          <h2 className="font-semibold mb-4 flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            {roleConfig[selectedRole].label} Permissions
+          </h2>
+
+          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
+            {TOP_LEVEL_PERMISSIONS.map((config) => {
+              const hasPermission = ROLE_PERMISSIONS[selectedRole].includes(config.id);
+              return (
+                <div
+                  key={config.id}
+                  className={cn(
+                    "flex items-center gap-2 p-2 rounded-lg text-sm",
+                    hasPermission ? "bg-green-500/10 text-green-500" : "bg-muted/50 text-muted-foreground"
+                  )}
+                >
+                  <div className={cn(
+                    "w-4 h-4 rounded-full flex items-center justify-center text-xs",
+                    hasPermission ? "bg-green-500 text-white" : "bg-muted"
+                  )}>
+                    {hasPermission ? "✓" : ""}
+                  </div>
+                  {config.label}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Members by Role */}
+      <div className="glass rounded-xl p-6">
+        <h2 className="font-semibold mb-4 flex items-center gap-2">
+          <Users className="h-4 w-4" />
+          Team Members by Role
+        </h2>
+
+        <div className="space-y-4">
+          {(Object.keys(roleConfig) as OrganizationRole[]).map((role) => {
+            const config = roleConfig[role];
+            const Icon = config.icon;
+            const roleMembers = members.filter(m => m.role === role);
+
+            if (roleMembers.length === 0) return null;
+
+            return (
+              <div key={role}>
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon className={`h-4 w-4 ${config.color.split(" ")[0]}`} />
+                  <span className="text-sm font-medium">{config.label}s</span>
+                </div>
+                <div className="pl-6 space-y-1">
+                  {roleMembers.map((member) => (
+                    <div key={member.id} className="text-sm text-muted-foreground">
+                      {member.user_profile?.full_name || member.user_profile?.email || "Unknown"}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Info Box */}
@@ -234,25 +233,14 @@ export function AdminPermissionsPage() {
         <div className="flex items-start gap-3">
           <Shield className="h-5 w-5 text-muted-foreground mt-0.5" />
           <div className="text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Security notice</p>
+            <p className="font-medium text-foreground">About Roles</p>
             <p className="mt-1">
-              Permissions are stored locally. In production, these will be
-              synced to the database.
+              Roles define what areas of the app each team member can access.
+              To change a member's role, go to Settings &gt; Team Members.
             </p>
           </div>
         </div>
       </div>
-
-      {/* Edit Modal */}
-      {editingEmail && editingAdmin && (
-        <EditPermissionsModal
-          email={editingEmail}
-          currentPermissions={editingAdmin.permissions}
-          currentSensitivePermissions={editingAdmin.sensitive_permissions}
-          onSave={(perms, sensitive) => handleSave(editingEmail, perms, sensitive)}
-          onClose={() => setEditingEmail(null)}
-        />
-      )}
     </div>
   );
 }

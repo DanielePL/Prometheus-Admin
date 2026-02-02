@@ -9,17 +9,17 @@ interface InfluencerManagerProtectedRouteProps {
 /**
  * Protected route for Influencer Manager pages.
  * Allows access if:
- * 1. User is admin/sales (via main auth) - full access
+ * 1. User is authenticated with creator permissions - full access
  * 2. User is authenticated as Influencer Manager - limited access
  */
 export function InfluencerManagerProtectedRoute({
   children,
 }: InfluencerManagerProtectedRouteProps) {
-  const { canAccessInfluencers } = useAuth();
+  const { hasPermission, isAuthenticated } = useAuth();
   const { isAuthenticated: isIMAuthenticated, isLoading } = useInfluencerManager();
 
-  // Admin/Sales users have direct access without additional login
-  if (canAccessInfluencers) {
+  // Authenticated users with creator permissions have direct access
+  if (isAuthenticated && hasPermission("creators")) {
     return <>{children}</>;
   }
 

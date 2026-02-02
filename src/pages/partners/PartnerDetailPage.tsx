@@ -60,7 +60,7 @@ const statusConfig = {
 
 export function PartnerDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const { isSuperAdmin } = useAuth();
+  const { isOwner } = useAuth();
   const { data: partners, isLoading: partnersLoading } = usePartners();
   const { data: referrals, isLoading: referralsLoading } = usePartnerReferrals(id);
   const { data: contracts } = useCreatorContracts(id || "");
@@ -182,7 +182,7 @@ export function PartnerDetailPage() {
       </div>
 
       {/* Pending Approval Banner - Super Admin Only */}
-      {isSuperAdmin && partner.status === "pending_approval" && (
+      {isOwner && partner.status === "pending_approval" && (
         <div className="glass rounded-2xl p-6 border-2 border-orange-500/30 bg-orange-500/5">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">

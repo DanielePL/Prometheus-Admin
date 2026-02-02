@@ -63,7 +63,7 @@ function formatPercent(value: number): string {
 }
 
 export function DashboardPage() {
-  const { isSuperAdmin } = useAuth();
+  const { isOwner } = useAuth();
   const { data: comprehensive, isLoading: comprehensiveLoading } = useComprehensiveSummary();
   const { data: serviceCosts, isLoading: serviceLoading } = useServiceCosts();
   const { data: breakEven, isLoading: breakEvenLoading } = useBreakEven();
@@ -227,8 +227,8 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {/* Pending Creator Approvals - Super Admin Only */}
-      {isSuperAdmin && pendingApprovals.length > 0 && (
+      {/* Pending Creator Approvals - Owner Only */}
+      {isOwner && pendingApprovals.length > 0 && (
         <div className="glass rounded-2xl p-6 border-2 border-orange-500/30 bg-orange-500/5">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-12 h-12 rounded-xl bg-orange-500/20 text-orange-500 flex items-center justify-center">

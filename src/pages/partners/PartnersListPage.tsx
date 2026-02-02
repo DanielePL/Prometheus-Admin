@@ -37,9 +37,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Partner, CreatePartnerInput, CreatorType, ProductType, ProductCommission } from "@/api/types/partners";
-import { PRODUCT_LABELS, DEFAULT_COMMISSIONS } from "@/api/types/partners";
+import type { Partner, CreatePartnerInput, CreatorType, ProductType, ProductCommission, InfluencerStatus } from "@/api/types/partners";
+import { PRODUCT_LABELS, DEFAULT_COMMISSIONS, INFLUENCER_STATUS_CONFIG } from "@/api/types/partners";
 import { INFLUENCER_CATEGORIES, TEAM_MEMBERS, type InfluencerCategory, type TeamMember } from "@/api/types/influencers";
+import { InfluencerStats, RevenueProjection, SubscriberProjection, TopPerformers } from "@/components/partners/InfluencerStats";
 import { cn } from "@/lib/utils";
 
 function formatCurrency(amount: number): string {
@@ -162,6 +163,7 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
     engagement_rate: partner?.engagement_rate || undefined,
     category: partner?.category || undefined,
     contact_person: partner?.contact_person || undefined,
+    influencer_status: partner?.influencer_status || "pending",
     // Products
     products: partner?.products || [],
     product_commissions: initProductCommissions(),
@@ -565,6 +567,21 @@ function PartnerForm({ partner, existingCodes, onSubmit, onCancel, isLoading, de
               </select>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Outreach Status</label>
+              <select
+                value={formData.influencer_status || "pending"}
+                onChange={(e) => setFormData({ ...formData, influencer_status: e.target.value as InfluencerStatus })}
+                className="w-full h-10 px-3 rounded-xl bg-background border border-input"
+              >
+                {(Object.keys(INFLUENCER_STATUS_CONFIG) as InfluencerStatus[]).map((status) => (
+                  <option key={status} value={status}>
+                    {INFLUENCER_STATUS_CONFIG[status].label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
           </>
         )}
       </div>
@@ -620,7 +637,7 @@ export function PartnersListPage() {
   const deleteMutation = useDeletePartner();
   const { hasPermission, user } = useAuth();
 
-  const canCreatePartners = hasPermission("partners:create");
+  const canCreatePartners = hasPermission("creators:create");
 
   const [showForm, setShowForm] = useState(false);
   const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
@@ -687,6 +704,7 @@ export function PartnersListPage() {
       notes: data.notes || undefined,
       tiktok_handle: data.tiktok_handle || undefined,
       youtube_handle: data.youtube_handle || undefined,
+      influencer_status: data.creator_type === "influencer" ? (data.influencer_status || "pending") : undefined,
       created_by: user?.email,
     };
     await createMutation.mutateAsync(cleaned);
@@ -870,6 +888,19 @@ export function PartnersListPage() {
           </div>
         </div>
       </div>
+
+      {/* Influencer Stats & Projections (only on influencer tab) */}
+      {activeTab === "influencer" && !isLoading && influencerCount > 0 && (
+        <>
+          <InfluencerStats influencers={filteredPartners} />
+
+          <div className="grid gap-6 lg:grid-cols-3">
+            <RevenueProjection influencers={filteredPartners} />
+            <SubscriberProjection influencers={filteredPartners} />
+            <TopPerformers influencers={filteredPartners} limit={5} />
+          </div>
+        </>
+      )}
 
       {/* Partner Monitoring Sections */}
       {!isLoading && (needsAttention.length > 0 || partnerWins.length > 0) && (
@@ -1070,6 +1101,18 @@ export function PartnersListPage() {
                       >
                         {partner.status === "pending_approval" ? "Pending Approval" : partner.status}
                       </span>
+                      {/* Influencer outreach status badge */}
+                      {partner.creator_type === "influencer" && partner.influencer_status && (
+                        <span
+                          className={cn(
+                            "px-2 py-0.5 rounded-full text-xs font-medium",
+                            INFLUENCER_STATUS_CONFIG[partner.influencer_status].bg,
+                            INFLUENCER_STATUS_CONFIG[partner.influencer_status].color
+                          )}
+                        >
+                          {INFLUENCER_STATUS_CONFIG[partner.influencer_status].label}
+                        </span>
+                      )}
                       {/* Contract status badge */}
                       {partner.contract_status && (
                         <span

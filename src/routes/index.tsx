@@ -8,6 +8,11 @@ import { CreatorLayout } from "@/components/creator-portal/CreatorLayout";
 
 // Auth Pages
 import { LoginPage } from "@/pages/auth/LoginPage";
+import { SignUpPage } from "@/pages/auth/SignUpPage";
+import { ForgotPasswordPage } from "@/pages/auth/ForgotPasswordPage";
+
+// Onboarding Pages
+import { CreateOrganizationPage } from "@/pages/onboarding/CreateOrganizationPage";
 
 // Admin Pages
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
@@ -43,6 +48,16 @@ import { LabDashboardPage } from "@/pages/lab/LabDashboardPage";
 import { AthletesListPage } from "@/pages/lab/AthletesListPage";
 import { AthleteDetailPage } from "@/pages/lab/AthleteDetailPage";
 
+// Security Pages
+import { LoginAuditPage } from "@/pages/security/LoginAuditPage";
+
+// Legal Pages (public)
+import { InfluencerTermsPage } from "@/pages/legal/InfluencerTermsPage";
+
+// Organization Pages
+import { TeamMembersPage } from "@/pages/organization/TeamMembersPage";
+import { OrganizationSettingsPage } from "@/pages/organization/OrganizationSettingsPage";
+
 // Creator Portal Pages
 import CreatorLogin from "@/pages/creator-portal/CreatorLogin";
 import CreatorDashboard from "@/pages/creator-portal/CreatorDashboard";
@@ -51,10 +66,33 @@ import CreatorPayoutsPage from "@/pages/creator-portal/PayoutsPage";
 import CreatorSettings from "@/pages/creator-portal/CreatorSettings";
 
 export const router = createBrowserRouter([
+  // Auth Routes (public)
   {
     path: "/login",
     element: <LoginPage />,
   },
+  {
+    path: "/signup",
+    element: <SignUpPage />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPasswordPage />,
+  },
+
+  // Legal Routes (public - no login required)
+  {
+    path: "/legal/influencer-terms",
+    element: <InfluencerTermsPage />,
+  },
+
+  // Onboarding Routes
+  {
+    path: "/onboarding/create-organization",
+    element: <CreateOrganizationPage />,
+  },
+
+  // Main App Routes (protected)
   {
     path: "/",
     element: (
@@ -73,88 +111,256 @@ export const router = createBrowserRouter([
       },
 
       // Costs
-      { path: "costs", element: <CostsOverviewPage /> },
-      { path: "costs/fixed", element: <FixedCostsPage /> },
-      { path: "costs/services", element: <CostsOverviewPage /> },
-      { path: "costs/users", element: <CostsOverviewPage /> },
+      {
+        path: "costs",
+        element: (
+          <PermissionGuard permission="costs">
+            <CostsOverviewPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "costs/fixed",
+        element: (
+          <PermissionGuard permission="costs">
+            <FixedCostsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "costs/services",
+        element: (
+          <PermissionGuard permission="costs">
+            <CostsOverviewPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "costs/users",
+        element: (
+          <PermissionGuard permission="costs">
+            <CostsOverviewPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Revenue
-      { path: "revenue", element: <RevenueOverviewPage /> },
+      {
+        path: "revenue",
+        element: (
+          <PermissionGuard permission="revenue">
+            <RevenueOverviewPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Analytics
-      { path: "analytics/break-even", element: <BreakEvenPage /> },
-      { path: "analytics/trends", element: <DashboardPage /> },
+      {
+        path: "analytics/break-even",
+        element: (
+          <PermissionGuard permission="analytics">
+            <BreakEvenPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "analytics/trends",
+        element: (
+          <PermissionGuard permission="analytics">
+            <DashboardPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Creators (formerly Partners)
-      { path: "partners", element: <PartnersListPage /> },
-      { path: "partners/:id", element: <PartnerDetailPage /> },
-      { path: "payouts", element: <PayoutsPage /> },
-      { path: "contracts", element: <ContractsPage /> },
-      { path: "deals", element: <DealsPage /> },
+      {
+        path: "partners",
+        element: (
+          <PermissionGuard permission="creators">
+            <PartnersListPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "partners/:id",
+        element: (
+          <PermissionGuard permission="creators">
+            <PartnerDetailPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "payouts",
+        element: (
+          <PermissionGuard permission="creators">
+            <PayoutsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "contracts",
+        element: (
+          <PermissionGuard permission="creators">
+            <ContractsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "deals",
+        element: (
+          <PermissionGuard permission="creators">
+            <DealsPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Ambassadors
       {
         path: "ambassadors",
         element: (
-          <PermissionGuard permission="ambassadors">
+          <PermissionGuard permission="creators">
             <AmbassadorControlPage />
           </PermissionGuard>
         ),
       },
 
-      // Employees (Super Admin only)
+      // Employees (Owner/Admin only)
       {
         path: "employees",
         element: (
-          <PermissionGuard permission="employees" superAdminOnly>
+          <PermissionGuard permission="employees" adminOnly>
             <EmployeesPage />
           </PermissionGuard>
         ),
       },
 
-      // Performance (Super Admin only)
+      // Performance (Owner only)
       {
         path: "performance",
         element: (
-          <PermissionGuard permission="performance" superAdminOnly>
+          <PermissionGuard permission="performance" ownerOnly>
             <PerformanceDashboard />
           </PermissionGuard>
         ),
       },
 
       // Beta Management
-      { path: "beta", element: <BetaManagementPage /> },
+      {
+        path: "beta",
+        element: (
+          <PermissionGuard permission="users">
+            <BetaManagementPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Crashes
-      { path: "crashes", element: <CrashesPage /> },
+      {
+        path: "crashes",
+        element: (
+          <PermissionGuard permission="users">
+            <CrashesPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Supabase Health
-      { path: "health", element: <SupabaseHealthPage /> },
+      {
+        path: "health",
+        element: (
+          <PermissionGuard adminOnly>
+            <SupabaseHealthPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Team Storage
-      { path: "storage", element: <TeamStoragePage /> },
+      {
+        path: "storage",
+        element: (
+          <PermissionGuard permission="storage">
+            <TeamStoragePage />
+          </PermissionGuard>
+        ),
+      },
 
       // Tasks
-      { path: "tasks", element: <TasksPage /> },
-      { path: "tasks/projects", element: <ProjectsPage /> },
+      {
+        path: "tasks",
+        element: (
+          <PermissionGuard permission="tasks">
+            <TasksPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "tasks/projects",
+        element: (
+          <PermissionGuard permission="tasks">
+            <ProjectsPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Users
-      { path: "users", element: <UsersListPage /> },
+      {
+        path: "users",
+        element: (
+          <PermissionGuard permission="users">
+            <UsersListPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Settings
-      { path: "settings/notifications", element: <DashboardPage /> },
+      {
+        path: "settings/notifications",
+        element: <DashboardPage />,
+      },
       {
         path: "settings/permissions",
         element: (
-          <PermissionGuard permission="settings" superAdminOnly>
+          <PermissionGuard ownerOnly>
             <AdminPermissionsPage />
           </PermissionGuard>
         ),
       },
 
+      // Organization Settings (new)
+      {
+        path: "settings/organization",
+        element: (
+          <PermissionGuard permission="settings" adminOnly>
+            <OrganizationSettingsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "settings/team",
+        element: (
+          <PermissionGuard permission="settings" adminOnly>
+            <TeamMembersPage />
+          </PermissionGuard>
+        ),
+      },
+
       // Sales
-      { path: "sales/demo", element: <SalesDemoPage /> },
-      { path: "sales/crm", element: <SalesCRMPage /> },
+      {
+        path: "sales/demo",
+        element: (
+          <PermissionGuard permission="sales">
+            <SalesDemoPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "sales/crm",
+        element: (
+          <PermissionGuard permission="sales">
+            <SalesCRMPage />
+          </PermissionGuard>
+        ),
+      },
 
       // Prometheus Lab
       {
@@ -182,7 +388,17 @@ export const router = createBrowserRouter([
         ),
       },
 
-      // Influencers now live in the unified Creators system
+      // Security (Owner only)
+      {
+        path: "security/login-audit",
+        element: (
+          <PermissionGuard ownerOnly>
+            <LoginAuditPage />
+          </PermissionGuard>
+        ),
+      },
+
+      // Redirects for old routes
       { path: "influencers", element: <Navigate to="/partners" replace /> },
     ],
   },

@@ -3,6 +3,21 @@ import type { InfluencerCategory, TeamMember } from "./influencers";
 // Creator type distinguishes between partners, influencers, and beta partners in the unified system
 export type CreatorType = "partner" | "influencer" | "beta_partner";
 
+// Influencer outreach status workflow
+export type InfluencerStatus = "pending" | "contacted" | "approved" | "rejected";
+
+export const INFLUENCER_STATUS_CONFIG: Record<InfluencerStatus, {
+  label: string;
+  color: string;
+  bg: string;
+  icon: string;
+}> = {
+  pending: { label: "Pending", color: "text-gray-500", bg: "bg-gray-500/20", icon: "clock" },
+  contacted: { label: "Contacted", color: "text-blue-500", bg: "bg-blue-500/20", icon: "mail" },
+  approved: { label: "Approved", color: "text-green-500", bg: "bg-green-500/20", icon: "check" },
+  rejected: { label: "Rejected", color: "text-red-500", bg: "bg-red-500/20", icon: "x" },
+};
+
 // Contract status for creators
 export type ContractStatus = "pending" | "signed" | "expired";
 
@@ -157,6 +172,7 @@ export interface Partner {
   engagement_rate?: number;
   category?: InfluencerCategory;
   contact_person?: TeamMember;
+  influencer_status?: InfluencerStatus;
 
   // Contract management
   contract_id?: string;
@@ -197,6 +213,7 @@ export interface CreatePartnerInput {
   engagement_rate?: number;
   category?: InfluencerCategory;
   contact_person?: TeamMember;
+  influencer_status?: InfluencerStatus;
 
   // Product assignments
   products?: ProductType[];

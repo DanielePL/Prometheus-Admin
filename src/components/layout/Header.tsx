@@ -2,14 +2,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { LogOut, Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
+import { OrganizationSwitcher } from "@/components/organization/OrganizationSwitcher";
 
 export function Header() {
-  const { user, logout } = useAuth();
+  const { user, signOut, userProfile, organizations } = useAuth();
   const { theme, setTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between glass px-6">
-      <div />
+      {/* Left side - Organization Switcher */}
+      <div>
+        {organizations.length > 1 && <OrganizationSwitcher />}
+      </div>
 
       <div className="flex items-center gap-4">
         {/* Theme Toggle */}
@@ -27,10 +31,10 @@ export function Header() {
         {user && (
           <div className="flex items-center gap-3">
             <div className="text-right">
-              <p className="text-sm font-medium">{user.name}</p>
+              <p className="text-sm font-medium">{userProfile?.full_name || user.email}</p>
               <p className="text-xs text-muted-foreground">{user.email}</p>
             </div>
-            <Button variant="ghost" size="icon" onClick={logout} title="Logout">
+            <Button variant="ghost" size="icon" onClick={signOut} title="Logout">
               <LogOut className="h-5 w-5" />
               <span className="sr-only">Logout</span>
             </Button>
