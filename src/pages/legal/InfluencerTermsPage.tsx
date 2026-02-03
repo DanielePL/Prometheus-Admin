@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Flame, ArrowLeft, FileText, Scale, Shield, Clock, Ban, AlertTriangle, CheckCircle } from "lucide-react";
+import { ArrowLeft, FileText, Scale, Shield, Clock, Ban, AlertTriangle, CheckCircle } from "lucide-react";
+import prometheusLogo from "@/assets/prometheus-logo.png";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "next-themes";
 import gradientBg from "@/assets/gradient-bg.jpg";
@@ -23,9 +24,7 @@ export function InfluencerTermsPage() {
       <header className="sticky top-0 z-50 glass border-b border-border/50">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-              <Flame className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={prometheusLogo} alt="Prometheus" className="h-10 w-10" />
             <span className="font-bold text-lg">Prometheus</span>
           </div>
           <Link to="/creator/login">
