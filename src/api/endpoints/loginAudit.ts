@@ -22,17 +22,11 @@ export const loginAuditEndpoints = {
   logLoginAttempt: async (
     input: CreateLoginAuditInput
   ): Promise<{ success: boolean; log?: LoginAuditLog }> => {
-    console.log("[LoginAudit Endpoint] isSupabaseConfigured:", isSupabaseConfigured);
-    console.log("[LoginAudit Endpoint] supabase client:", supabase ? "exists" : "null");
-
     if (!isSupabaseConfigured) {
-      console.warn("[LoginAudit Endpoint] Supabase not configured, skipping login audit log");
       return { success: false };
     }
 
     const client = requireSupabase();
-    console.log("[LoginAudit Endpoint] Inserting:", input);
-
     const { data, error } = await client
       .from(TABLE_NAME)
       .insert({
@@ -46,11 +40,9 @@ export const loginAuditEndpoints = {
       .single();
 
     if (error) {
-      console.error("[LoginAudit Endpoint] Failed to log login attempt:", error);
       return { success: false };
     }
 
-    console.log("[LoginAudit Endpoint] Success! Data:", data);
     return { success: true, log: data };
   },
 

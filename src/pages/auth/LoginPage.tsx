@@ -71,8 +71,8 @@ export function LoginPage() {
     setIsLoading(true);
 
     try {
-      const success = await login(selectedAccount.email, password);
-      if (success) {
+      const result = await login(selectedAccount.email, password);
+      if (!result.error) {
         navigate(getRedirectPath(selectedAccount), { replace: true });
       } else {
         setError("Incorrect password. Please try again.");

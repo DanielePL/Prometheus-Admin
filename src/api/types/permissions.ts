@@ -92,22 +92,24 @@ export type Permission =
 export const ROLE_PERMISSIONS: Record<AdminAccount["role"], Permission[]> = {
   super_admin: [
     "dashboard", "costs", "revenue", "analytics", "partners", "partners:create",
-    "employees", "performance", "users", "sales", "influencers", "ambassadors", "lab", "settings",
+    "creators", "creators:create", "employees", "performance", "users", "sales",
+    "influencers", "ambassadors", "lab", "storage", "tasks", "settings",
   ],
   admin: [
-    "dashboard", "costs", "revenue", "analytics", "partners",
-    "users", "sales", "influencers", "ambassadors", "lab", "settings",
+    "dashboard", "costs", "revenue", "analytics", "partners", "partners:create",
+    "creators", "creators:create", "users", "sales", "influencers", "ambassadors",
+    "lab", "storage", "tasks", "settings",
   ],
   campus: [
     "dashboard", "costs", "revenue", "analytics", "partners",
-    "users", "sales", "influencers", "ambassadors", "lab", "settings",
+    "creators", "users", "sales", "influencers", "ambassadors", "lab",
+    "storage", "tasks", "settings",
   ],
   partner_manager: [
-    "partners", "influencers", "ambassadors",
+    "dashboard", "partners", "creators", "influencers", "ambassadors", "tasks",
   ],
   lab: [
-    "dashboard", "costs", "revenue", "analytics", "partners",
-    "users", "sales", "influencers", "ambassadors", "lab", "settings",
+    "dashboard", "lab", "tasks",
   ],
 };
 

@@ -9,9 +9,26 @@ if (!isConfigured) {
   console.warn("⚠️ Supabase credentials not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env");
 }
 
-// Create client only if configured, otherwise create a dummy that will fail gracefully
-export const supabase: SupabaseClient | null = isConfigured
-  ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!)
-  : null;
+// Singleton pattern to prevent multiple GoTrueClient instances
+let supabaseInstance: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient | null {
+  if (!isConfigured) return null;
+
+  if (!supabaseInstance) {
+    supabaseInstance = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+        storageKey: 'prometheus-auth',
+      },
+    });
+  }
+
+  return supabaseInstance;
+}
+
+export const supabase = getSupabaseClient();
 
 export { isConfigured as isSupabaseConfigured };

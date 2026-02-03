@@ -20,6 +20,7 @@ import {
   hasPermission as checkHasPermission,
   hasSensitivePermission as checkHasSensitivePermission,
 } from "@/api/types/permissions";
+import { loginAuditEndpoints } from "@/api/endpoints/loginAudit";
 
 // =============================================================================
 // Types
@@ -90,6 +91,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
+  // Legacy admin role (for hardcoded accounts)
+  const [legacyAdminRole, setLegacyAdminRole] = useState<string | null>(null);
+
   // ---------------------------------------------------------------------------
   // Fetch User Data (Profile, Memberships, Organizations)
   // ---------------------------------------------------------------------------
@@ -98,25 +102,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return;
 
     try {
-      // Fetch user profile
-      const { data: profile } = await supabase
+      // Try to fetch user profile (may not exist in legacy setup)
+      const { data: profile, error: profileError } = await supabase
         .from("user_profiles")
         .select("*")
         .eq("id", userId)
         .single();
 
-      if (profile) {
+      if (profile && !profileError) {
         setUserProfile(profile);
       }
 
-      // Fetch all organization memberships
-      const { data: memberships } = await supabase
+      // Try to fetch organization memberships (may not exist in legacy setup)
+      const { data: memberships, error: membershipError } = await supabase
         .from("organization_members")
         .select(`
           *,
           organization:organizations(*)
         `)
         .eq("user_id", userId);
+
+      // If multi-tenant tables don't exist, use legacy mode
+      if (membershipError?.code === '42P01' || membershipError?.message?.includes('does not exist')) {
+        console.log("Multi-tenant tables not found, running in legacy mode");
+        // Create mock organization for legacy mode
+        const mockOrg: Organization = {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Prometheus',
+          slug: 'prometheus',
+          subscription_status: 'active',
+          subscription_plan: 'enterprise',
+          max_seats: 100,
+          max_creators: 1000,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const mockMembership: OrganizationMember = {
+          id: '00000000-0000-0000-0000-000000000002',
+          organization_id: mockOrg.id,
+          user_id: userId,
+          role: 'owner',
+          permissions: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setOrganization(mockOrg);
+        setMembership(mockMembership);
+        setOrganizations([mockOrg]);
+        return;
+      }
 
       if (memberships && memberships.length > 0) {
         // Extract organizations
@@ -150,9 +184,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               .eq("id", userId);
           }
         }
+      } else {
+        // No memberships - use legacy mode
+        console.log("No organization memberships found, running in legacy mode");
+        const mockOrg: Organization = {
+          id: '00000000-0000-0000-0000-000000000001',
+          name: 'Prometheus',
+          slug: 'prometheus',
+          subscription_status: 'active',
+          subscription_plan: 'enterprise',
+          max_seats: 100,
+          max_creators: 1000,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const mockMembership: OrganizationMember = {
+          id: '00000000-0000-0000-0000-000000000002',
+          organization_id: mockOrg.id,
+          user_id: userId,
+          role: 'owner',
+          permissions: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setOrganization(mockOrg);
+        setMembership(mockMembership);
+        setOrganizations([mockOrg]);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
+      // Fallback to legacy mode on any error
+      const mockOrg: Organization = {
+        id: '00000000-0000-0000-0000-000000000001',
+        name: 'Prometheus',
+        slug: 'prometheus',
+        subscription_status: 'active',
+        subscription_plan: 'enterprise',
+        max_seats: 100,
+        max_creators: 1000,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const mockMembership: OrganizationMember = {
+        id: '00000000-0000-0000-0000-000000000002',
+        organization_id: mockOrg.id,
+        user_id: userId,
+        role: 'owner',
+        permissions: [],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      setOrganization(mockOrg);
+      setMembership(mockMembership);
+      setOrganizations([mockOrg]);
     }
   }, []);
 
@@ -176,6 +260,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setIsLoading(false);
+    }).catch((error) => {
+      // Handle AbortError from StrictMode gracefully
+      if (error?.name !== 'AbortError') {
+        console.error('Error getting session:', error);
+      }
+      setIsLoading(false);
     });
 
     // Listen for auth changes
@@ -192,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setMembership(null);
         setUserProfile(null);
         setOrganizations([]);
+        setLegacyAdminRole(null);
       }
     });
 
@@ -208,14 +299,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = isOwner; // Owner has super admin privileges
   const canAccessCRM = isOwner || isAdmin; // Owners and admins can access CRM
 
-  // Get permissions based on role - map org roles to admin permissions
-  const rolePermissionMap: Record<OrganizationRole, Permission[]> = {
-    owner: ROLE_PERMISSIONS.super_admin,
-    admin: ROLE_PERMISSIONS.admin,
-    member: ROLE_PERMISSIONS.campus,
-    viewer: ["dashboard"],
+  // Get permissions based on role
+  // If legacy admin role is set, use that directly; otherwise map org roles
+  const getPermissions = (): Permission[] => {
+    if (legacyAdminRole && legacyAdminRole in ROLE_PERMISSIONS) {
+      return ROLE_PERMISSIONS[legacyAdminRole as keyof typeof ROLE_PERMISSIONS];
+    }
+    if (!role) return [];
+    const rolePermissionMap: Record<OrganizationRole, Permission[]> = {
+      owner: ROLE_PERMISSIONS.super_admin,
+      admin: ROLE_PERMISSIONS.admin,
+      member: ROLE_PERMISSIONS.campus,
+      viewer: ["dashboard"],
+    };
+    return rolePermissionMap[role];
   };
-  const permissions: Permission[] = role ? rolePermissionMap[role] : [];
+  const permissions: Permission[] = getPermissions();
   const sensitivePermissions: SensitivePermission[] = role
     ? ROLE_SENSITIVE_PERMISSIONS[role]
     : [];
@@ -253,14 +352,126 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async (email: string, password: string): Promise<{ error: Error | null }> => {
-      if (!supabase) {
-        return { error: new Error("Supabase not configured") };
+      // First, check hardcoded admin accounts (legacy mode)
+      const { ADMIN_ACCOUNTS } = await import("@/api/types/permissions");
+      const adminAccount = ADMIN_ACCOUNTS.find(
+        (acc) => acc.email === email && acc.password === password
+      );
+
+      if (adminAccount) {
+        // Hardcoded login successful - create mock user/session
+        console.log("Legacy login successful for:", adminAccount.name);
+
+        const mockUser = {
+          id: `legacy-${adminAccount.email}`,
+          email: adminAccount.email,
+          user_metadata: { full_name: adminAccount.name },
+          app_metadata: {},
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as unknown as User;
+
+        const mockSession = {
+          access_token: "legacy-token",
+          refresh_token: "legacy-refresh",
+          expires_in: 3600,
+          token_type: "bearer",
+          user: mockUser,
+        } as unknown as Session;
+
+        setUser(mockUser);
+        setSession(mockSession);
+
+        // Set up mock organization based on role
+        const roleToOrgRole: Record<string, OrganizationRole> = {
+          super_admin: "owner",
+          admin: "admin",
+          campus: "member",
+          partner_manager: "member",
+          lab: "member",
+        };
+
+        const mockOrg: Organization = {
+          id: "00000000-0000-0000-0000-000000000001",
+          name: "Prometheus",
+          slug: "prometheus",
+          subscription_status: "active",
+          subscription_plan: "enterprise",
+          max_seats: 100,
+          max_creators: 1000,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const mockMembership: OrganizationMember = {
+          id: "00000000-0000-0000-0000-000000000002",
+          organization_id: mockOrg.id,
+          user_id: mockUser.id,
+          role: roleToOrgRole[adminAccount.role] || "member",
+          permissions: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        setOrganization(mockOrg);
+        setMembership(mockMembership);
+        setOrganizations([mockOrg]);
+        setLegacyAdminRole(adminAccount.role); // Store the original admin role
+        setUserProfile({
+          id: mockUser.id,
+          email: mockUser.email!,
+          full_name: adminAccount.name,
+          current_organization_id: mockOrg.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserProfile);
+
+        return { error: null };
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      // If no hardcoded match, try Supabase Auth
+      if (!supabase) {
+        return { error: new Error("Invalid credentials") };
+      }
+
+      // Get metadata for audit logging (non-blocking)
+      const userAgent = typeof window !== "undefined" ? window.navigator.userAgent : null;
+      let ipAddress: string | null = null;
+      try {
+        const ipResponse = await fetch("https://api.ipify.org?format=json", {
+          signal: AbortSignal.timeout(3000),
+        });
+        const ipData = await ipResponse.json();
+        ipAddress = ipData.ip;
+      } catch {
+        // IP fetch failed, continue without it
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
+
+      // Log the attempt (silent - no console output)
+      if (error) {
+        const status = error.message.includes("Invalid login credentials")
+          ? "failed_wrong_password"
+          : "failed_not_found";
+        loginAuditEndpoints.logLoginAttempt({
+          email,
+          status,
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        }).catch(() => {});
+      } else if (data.user) {
+        loginAuditEndpoints.logLoginAttempt({
+          email,
+          account_name: data.user.user_metadata?.full_name || null,
+          status: "success",
+          ip_address: ipAddress,
+          user_agent: userAgent,
+        }).catch(() => {});
+      }
 
       return { error: error ? new Error(error.message) : null };
     },
