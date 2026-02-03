@@ -106,10 +106,10 @@ export const ROLE_PERMISSIONS: Record<AdminAccount["role"], Permission[]> = {
     "storage", "tasks", "settings",
   ],
   partner_manager: [
-    "dashboard", "partners", "creators", "influencers", "ambassadors", "tasks",
+    "partners", "creators", "influencers", "ambassadors", "tasks",
   ],
   lab: [
-    "dashboard", "lab", "tasks",
+    "lab", "tasks",
   ],
 };
 
