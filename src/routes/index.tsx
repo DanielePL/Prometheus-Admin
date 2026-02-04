@@ -278,7 +278,7 @@ export const router = createBrowserRouter([
       {
         path: "health",
         element: (
-          <PermissionGuard adminOnly>
+          <PermissionGuard permission="users">
             <SupabaseHealthPage />
           </PermissionGuard>
         ),

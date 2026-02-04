@@ -164,6 +164,7 @@ const allNavigation: NavItem[] = [
 export function Sidebar() {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [manuallyCollapsed, setManuallyCollapsed] = useState<string[]>([]);
   const { hasPermission, isSuperAdmin, canAccessCRM } = useAuth();
 
   // Filter navigation based on user permissions
@@ -201,16 +202,31 @@ export function Sidebar() {
   }, [hasPermission, isSuperAdmin]);
 
   const toggleExpanded = (label: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(label)
-        ? prev.filter((item) => item !== label)
-        : [...prev, label]
+    const childActive = navigation.find(n => n.label === label)?.children?.some(
+      child => location.pathname === child.href
     );
+
+    if (expandedItems.includes(label) || (childActive && !manuallyCollapsed.includes(label))) {
+      // Currently expanded -> collapse and mark as manually collapsed
+      setExpandedItems((prev) => prev.filter((item) => item !== label));
+      setManuallyCollapsed((prev) => [...prev, label]);
+    } else {
+      // Currently collapsed -> expand and remove from manually collapsed
+      setExpandedItems((prev) => [...prev, label]);
+      setManuallyCollapsed((prev) => prev.filter((item) => item !== label));
+    }
   };
 
   const isChildActive = (children?: { href: string }[]) => {
     if (!children) return false;
     return children.some((child) => location.pathname === child.href);
+  };
+
+  const isItemExpanded = (label: string, children?: { href: string }[]) => {
+    // If manually collapsed, stay collapsed
+    if (manuallyCollapsed.includes(label)) return false;
+    // Otherwise, expand if in expandedItems or if a child is active
+    return expandedItems.includes(label) || isChildActive(children);
   };
 
   return (
@@ -228,8 +244,7 @@ export function Sidebar() {
         <nav className="flex-1 space-y-1 overflow-y-auto p-4">
           {navigation.map((item) => {
             const Icon = item.icon;
-            const isExpanded =
-              expandedItems.includes(item.label) || isChildActive(item.children);
+            const isExpanded = isItemExpanded(item.label, item.children);
 
             if (item.children) {
               return (
