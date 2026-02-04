@@ -92,7 +92,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
 
   // Legacy admin role (for hardcoded accounts)
-  const [legacyAdminRole, setLegacyAdminRole] = useState<string | null>(null);
+  const [legacyAdminRole, setLegacyAdminRole] = useState<string | null>(() => {
+    // Restore from localStorage on mount
+    const stored = localStorage.getItem("prometheus-legacy-session");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        return parsed.role || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
 
   // ---------------------------------------------------------------------------
   // Fetch User Data (Profile, Memberships, Organizations)
@@ -245,12 +257,90 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
+    // First, check for legacy session in localStorage
+    const storedLegacy = localStorage.getItem("prometheus-legacy-session");
+    if (storedLegacy) {
+      try {
+        const legacyData = JSON.parse(storedLegacy);
+        console.log("Restoring legacy session for:", legacyData.name);
+
+        // Restore the mock user
+        const mockUser = {
+          id: `legacy-${legacyData.email}`,
+          email: legacyData.email,
+          user_metadata: { full_name: legacyData.name },
+          app_metadata: {},
+          aud: "authenticated",
+          created_at: new Date().toISOString(),
+        } as unknown as User;
+
+        const mockSession = {
+          access_token: "legacy-token",
+          refresh_token: "legacy-refresh",
+          expires_in: 3600,
+          token_type: "bearer",
+          user: mockUser,
+        } as unknown as Session;
+
+        const mockOrg: Organization = {
+          id: "00000000-0000-0000-0000-000000000001",
+          name: "Prometheus",
+          slug: "prometheus",
+          subscription_status: "active",
+          subscription_plan: "enterprise",
+          max_seats: 100,
+          max_creators: 1000,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const roleToOrgRole: Record<string, OrganizationRole> = {
+          super_admin: "owner",
+          admin: "admin",
+          campus: "member",
+          partner_manager: "member",
+          lab: "member",
+        };
+
+        const mockMembership: OrganizationMember = {
+          id: "00000000-0000-0000-0000-000000000002",
+          organization_id: mockOrg.id,
+          user_id: mockUser.id,
+          role: roleToOrgRole[legacyData.role] || "member",
+          permissions: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        setUser(mockUser);
+        setSession(mockSession);
+        setOrganization(mockOrg);
+        setMembership(mockMembership);
+        setOrganizations([mockOrg]);
+        setLegacyAdminRole(legacyData.role);
+        setUserProfile({
+          id: mockUser.id,
+          email: mockUser.email!,
+          full_name: legacyData.name,
+          current_organization_id: mockOrg.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        } as UserProfile);
+
+        setIsLoading(false);
+        return;
+      } catch (e) {
+        console.error("Failed to restore legacy session:", e);
+        localStorage.removeItem("prometheus-legacy-session");
+      }
+    }
+
     if (!supabase) {
       setIsLoading(false);
       return;
     }
 
-    // Get initial session
+    // Get initial session from Supabase
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -426,6 +516,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updated_at: new Date().toISOString(),
         } as UserProfile);
 
+        // Persist legacy session to localStorage
+        localStorage.setItem("prometheus-legacy-session", JSON.stringify({
+          email: adminAccount.email,
+          name: adminAccount.name,
+          role: adminAccount.role,
+        }));
+
         return { error: null };
       }
 
@@ -504,8 +601,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const signOut = useCallback(async (): Promise<void> => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    // Clear legacy session
+    localStorage.removeItem("prometheus-legacy-session");
+    setLegacyAdminRole(null);
+    setUser(null);
+    setSession(null);
+    setOrganization(null);
+    setMembership(null);
+    setUserProfile(null);
+    setOrganizations([]);
+
+    // Also sign out from Supabase if configured
+    if (supabase) {
+      await supabase.auth.signOut();
+    }
   }, []);
 
   const resetPassword = useCallback(
