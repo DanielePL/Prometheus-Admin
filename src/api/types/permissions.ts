@@ -248,6 +248,7 @@ export interface OrganizationMember {
   organization_id: string;
   user_id: string;
   role: OrganizationRole;
+  permissions?: Permission[];
   created_at: string;
   updated_at: string;
   organization?: Organization;
