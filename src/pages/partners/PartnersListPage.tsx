@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
 import {
   Users,
   Plus,
@@ -32,13 +33,16 @@ import {
   useCreatePartner,
   useUpdatePartner,
   useDeletePartner,
+  partnerKeys,
 } from "@/hooks/usePartners";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Partner, CreatePartnerInput, CreatorType, ProductType, ProductCommission, InfluencerStatus } from "@/api/types/partners";
 import { PRODUCT_LABELS, DEFAULT_COMMISSIONS, INFLUENCER_STATUS_CONFIG } from "@/api/types/partners";
+import { supabase } from "@/api/supabaseClient";
 import { INFLUENCER_CATEGORIES, TEAM_MEMBERS, type InfluencerCategory, type TeamMember } from "@/api/types/influencers";
 import { InfluencerStats, RevenueProjection, SubscriberProjection, TopPerformers } from "@/components/partners/InfluencerStats";
 import { cn } from "@/lib/utils";
@@ -636,6 +640,7 @@ export function PartnersListPage() {
   const updateMutation = useUpdatePartner();
   const deleteMutation = useDeletePartner();
   const { hasPermission, user } = useAuth();
+  const queryClient = useQueryClient();
 
   const canCreatePartners = hasPermission("creators:create");
 
@@ -717,9 +722,39 @@ export function PartnersListPage() {
     setEditingPartner(null);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this partner?")) {
-      await deleteMutation.mutateAsync(id);
+  const handleDelete = async (id: string, name: string) => {
+    if (confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      try {
+        // Try external API first
+        await deleteMutation.mutateAsync(id);
+        toast.success(`"${name}" deleted successfully`);
+      } catch (apiError) {
+        console.error("API delete failed, trying Supabase direct:", apiError);
+
+        // Fallback to Supabase direct delete
+        if (supabase) {
+          try {
+            const { error: supabaseError } = await supabase
+              .from("partners")
+              .delete()
+              .eq("id", id);
+
+            if (supabaseError) {
+              console.error("Supabase delete error:", supabaseError);
+              toast.error(`Failed to delete: ${supabaseError.message}`);
+            } else {
+              toast.success(`"${name}" deleted successfully`);
+              // Invalidate partners query to refetch
+              queryClient.invalidateQueries({ queryKey: partnerKeys.all });
+            }
+          } catch (sbError) {
+            console.error("Supabase fallback failed:", sbError);
+            toast.error("Failed to delete. Please try again.");
+          }
+        } else {
+          toast.error("Delete failed. External API unavailable and Supabase not configured.");
+        }
+      }
     }
   };
 
@@ -1231,7 +1266,7 @@ export function PartnersListPage() {
                       variant="ghost"
                       size="icon"
                       className="rounded-xl h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(partner.id)}
+                      onClick={() => handleDelete(partner.id, partner.name)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
