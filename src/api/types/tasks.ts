@@ -183,6 +183,21 @@ export const TASK_ASSIGNEES: TaskAssignee[] = [
   "Basil",
 ];
 
+// Email mapping for notifications
+export const ASSIGNEE_EMAILS: Record<TaskAssignee, string> = {
+  Daniele: "management@prometheus.coach",
+  Karin: "admin@prometheus.coach",
+  Sjoerd: "campus@prometheus.coach",
+  Valerie: "partners@prometheus.coach",
+  Basil: "lab@prometheus.coach",
+};
+
+// Get email for assignee
+export function getAssigneeEmail(assignee?: TaskAssignee): string | undefined {
+  if (!assignee) return undefined;
+  return ASSIGNEE_EMAILS[assignee];
+}
+
 export const TASK_STATUSES: { value: TaskStatus; label: string; color: string }[] = [
   { value: "todo", label: "To Do", color: "bg-slate-500" },
   { value: "in_progress", label: "In Progress", color: "bg-blue-500" },

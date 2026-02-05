@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { X, CheckSquare } from "lucide-react";
+import { X, CheckSquare, Mail } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateTask } from "@/hooks/useTasks";
 import { useProjects } from "@/hooks/useTasks";
 import type { TaskPriority, TaskAssignee, CreateTaskInput } from "@/api/types/tasks";
-import { TASK_ASSIGNEES, TASK_PRIORITIES } from "@/api/types/tasks";
+import { TASK_ASSIGNEES, TASK_PRIORITIES, getAssigneeEmail } from "@/api/types/tasks";
+import { notifyTaskAssigned } from "@/hooks/useSendNotification";
 
 interface NewTaskModalProps {
   isOpen: boolean;
@@ -25,6 +27,8 @@ export function NewTaskModal({ isOpen, onClose, defaultProjectId }: NewTaskModal
   const [deadline, setDeadline] = useState("");
   const [createdBy, setCreatedBy] = useState<TaskAssignee | "">("");
 
+  const [sendNotification, setSendNotification] = useState(true);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -42,6 +46,27 @@ export function NewTaskModal({ isOpen, onClose, defaultProjectId }: NewTaskModal
 
     try {
       await createTask.mutateAsync(input);
+
+      // Send email notification if assignee is set and different from creator
+      if (sendNotification && assignee && assignee !== createdBy) {
+        const assigneeEmail = getAssigneeEmail(assignee as TaskAssignee);
+        if (assigneeEmail) {
+          notifyTaskAssigned({
+            assigneeEmail,
+            taskTitle: title.trim(),
+            taskDescription: description.trim() || undefined,
+            assignedByName: createdBy,
+            dueDate: deadline || undefined,
+          }).then((result) => {
+            if (result.success && !result.skipped) {
+              toast.success(`Email notification sent to ${assignee}`);
+            }
+          }).catch(() => {
+            // Silently fail - task was still created
+          });
+        }
+      }
+
       // Reset form
       setTitle("");
       setDescription("");
@@ -49,6 +74,7 @@ export function NewTaskModal({ isOpen, onClose, defaultProjectId }: NewTaskModal
       setPriority("medium");
       setAssignee("");
       setDeadline("");
+      setSendNotification(true);
       onClose();
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -188,6 +214,32 @@ export function NewTaskModal({ isOpen, onClose, defaultProjectId }: NewTaskModal
               ))}
             </select>
           </div>
+
+          {/* Email Notification Toggle */}
+          {assignee && assignee !== createdBy && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
+              <Mail className="w-5 h-5 text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Notify {assignee}</p>
+                <p className="text-xs text-muted-foreground">
+                  Send email notification about this task
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSendNotification(!sendNotification)}
+                className={`relative w-11 h-6 rounded-full transition-colors ${
+                  sendNotification ? "bg-primary" : "bg-muted"
+                }`}
+              >
+                <span
+                  className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform ${
+                    sendNotification ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-muted/20">
