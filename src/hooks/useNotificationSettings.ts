@@ -35,11 +35,13 @@ export function useNotificationSettings() {
       if (!supabase || !userEmail) return [];
 
       // First, try to initialize settings if they don't exist
-      await supabase.rpc("initialize_notification_settings", {
-        p_user_email: userEmail,
-      }).catch(() => {
+      try {
+        await supabase.rpc("initialize_notification_settings", {
+          p_user_email: userEmail,
+        });
+      } catch {
         // Function might not exist yet, ignore error
-      });
+      }
 
       const { data, error } = await supabase
         .from("notification_settings")
