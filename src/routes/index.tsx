@@ -30,6 +30,7 @@ import { SalesDemoPage } from "@/pages/sales/SalesDemoPage";
 import { SalesCRMPage } from "@/pages/sales/SalesCRMPage";
 
 import { AdminPermissionsPage } from "@/pages/settings/AdminPermissionsPage";
+import { NotificationsPage } from "@/pages/settings/NotificationsPage";
 import { PerformanceDashboard } from "@/pages/performance/PerformanceDashboard";
 import { BetaManagementPage } from "@/pages/beta/BetaManagementPage";
 import { CrashesPage } from "@/pages/crashes/CrashesPage";
@@ -325,7 +326,11 @@ export const router = createBrowserRouter([
       // Settings
       {
         path: "settings/notifications",
-        element: <DashboardPage />,
+        element: (
+          <PermissionGuard permission="settings">
+            <NotificationsPage />
+          </PermissionGuard>
+        ),
       },
       {
         path: "settings/permissions",
