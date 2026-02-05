@@ -1,21 +1,36 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, Moon, Sun } from "lucide-react";
+import { LogOut, Moon, Sun, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 import { OrganizationSwitcher } from "@/components/organization/OrganizationSwitcher";
 
-export function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
   const { user, signOut, userProfile, organizations } = useAuth();
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between glass px-6">
-      {/* Left side - Organization Switcher */}
-      <div>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between glass px-4 md:px-6">
+      {/* Left side - Menu button (mobile) + Organization Switcher */}
+      <div className="flex items-center gap-3">
+        {/* Hamburger menu - only visible on mobile */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="lg:hidden"
+          onClick={onMenuClick}
+        >
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Open menu</span>
+        </Button>
+
         {organizations.length > 1 && <OrganizationSwitcher />}
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 md:gap-4">
         {/* Theme Toggle */}
         <Button
           variant="ghost"
@@ -29,10 +44,11 @@ export function Header() {
 
         {/* User Info */}
         {user && (
-          <div className="flex items-center gap-3">
-            <div className="text-right">
+          <div className="flex items-center gap-2 md:gap-3">
+            {/* Hide user details on very small screens */}
+            <div className="text-right hidden sm:block">
               <p className="text-sm font-medium">{userProfile?.full_name || user.email}</p>
-              <p className="text-xs text-muted-foreground">{user.email}</p>
+              <p className="text-xs text-muted-foreground hidden md:block">{user.email}</p>
             </div>
             <Button variant="ghost" size="icon" onClick={signOut} title="Logout">
               <LogOut className="h-5 w-5" />

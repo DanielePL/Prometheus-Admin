@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import { Sidebar } from "./Sidebar";
 import { Header } from "./Header";
@@ -7,6 +8,7 @@ import gradientBgDark from "@/assets/gradient-bg-dark.png";
 
 export function AppShell() {
   const { theme } = useTheme();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div
@@ -18,10 +20,20 @@ export function AppShell() {
         backgroundAttachment: "fixed",
       }}
     >
-      <Sidebar />
-      <div className="pl-64">
-        <Header />
-        <main className="p-6">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main content - pl-64 only on large screens */}
+      <div className="lg:pl-64">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <main className="p-4 md:p-6">
           <Outlet />
         </main>
       </div>

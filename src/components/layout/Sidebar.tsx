@@ -19,11 +19,17 @@ import {
   FolderOpen,
   Microscope,
   CheckSquare,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Permission } from "@/api/types/permissions";
+
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
 
 interface NavChild {
   label: string;
@@ -161,11 +167,18 @@ const allNavigation: NavItem[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isOpen = false, onClose }: SidebarProps) {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [manuallyCollapsed, setManuallyCollapsed] = useState<string[]>([]);
   const { hasPermission, isSuperAdmin, canAccessCRM } = useAuth();
+
+  // Close sidebar when navigating on mobile
+  const handleNavClick = () => {
+    if (onClose && window.innerWidth < 1024) {
+      onClose();
+    }
+  };
 
   // Filter navigation based on user permissions
   const navigation = useMemo(() => {
@@ -230,14 +243,30 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-64 glass">
+    <aside
+      className={cn(
+        "fixed left-0 top-0 z-50 h-screen w-64 glass transition-transform duration-300 ease-in-out",
+        // Mobile: hidden by default, slide in when open
+        "lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
       <div className="flex h-full flex-col">
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-orange">
-            <Flame className="h-5 w-5 text-primary-foreground" />
+        {/* Logo + Close button */}
+        <div className="flex h-16 items-center justify-between border-b border-white/10 px-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary glow-orange">
+              <Flame className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-lg font-bold">Prometheus Admin</span>
           </div>
-          <span className="text-lg font-bold">Prometheus Admin</span>
+          {/* Close button - only visible on mobile */}
+          <button
+            onClick={onClose}
+            className="lg:hidden p-2 rounded-lg hover:bg-background/50 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -275,6 +304,7 @@ export function Sidebar() {
                         <NavLink
                           key={child.href}
                           to={child.href}
+                          onClick={handleNavClick}
                           className={({ isActive }) =>
                             cn(
                               "block rounded-xl px-3 py-2 text-sm transition-smooth",
@@ -297,6 +327,7 @@ export function Sidebar() {
               <NavLink
                 key={item.label}
                 to={item.href!}
+                onClick={handleNavClick}
                 className={({ isActive }) =>
                   cn(
                     "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-smooth",
@@ -320,6 +351,7 @@ export function Sidebar() {
               href="/creator"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={handleNavClick}
               className="flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-background/50 hover:text-foreground transition-smooth"
             >
               <div className="flex items-center gap-3">
