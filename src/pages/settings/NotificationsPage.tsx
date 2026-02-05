@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Bell,
@@ -12,29 +12,36 @@ import {
   FileText,
   Shield,
   Save,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import {
+  useNotificationSettings,
+  useSaveNotificationSettings,
+  type NotificationSettingUpdate,
+} from "@/hooks/useNotificationSettings";
 
-interface NotificationSetting {
+interface NotificationConfig {
   id: string;
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  email: boolean;
-  push: boolean;
+  defaultEmail: boolean;
+  defaultPush: boolean;
   category: "creators" | "finance" | "system" | "security";
 }
 
-const defaultSettings: NotificationSetting[] = [
+const notificationConfigs: NotificationConfig[] = [
   // Creators
   {
     id: "new_creator",
     label: "New Creator Sign-up",
     description: "When a new creator registers and needs approval",
     icon: UserPlus,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "creators",
   },
   {
@@ -42,8 +49,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Inactive Creator Alert",
     description: "When a creator has no referrals for 14+ days",
     icon: AlertTriangle,
-    email: true,
-    push: false,
+    defaultEmail: true,
+    defaultPush: false,
     category: "creators",
   },
   {
@@ -51,8 +58,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Creator Milestone",
     description: "When a creator reaches a referral milestone",
     icon: TrendingUp,
-    email: false,
-    push: true,
+    defaultEmail: false,
+    defaultPush: true,
     category: "creators",
   },
   {
@@ -60,8 +67,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Contract Expiring",
     description: "When a creator contract is about to expire",
     icon: FileText,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "creators",
   },
 
@@ -71,8 +78,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Payout Request",
     description: "When a creator requests a payout",
     icon: DollarSign,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "finance",
   },
   {
@@ -80,8 +87,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Payout Threshold Reached",
     description: "When pending payouts exceed a threshold",
     icon: DollarSign,
-    email: true,
-    push: false,
+    defaultEmail: true,
+    defaultPush: false,
     category: "finance",
   },
   {
@@ -89,8 +96,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Revenue Milestone",
     description: "When monthly revenue reaches a milestone",
     icon: TrendingUp,
-    email: false,
-    push: true,
+    defaultEmail: false,
+    defaultPush: true,
     category: "finance",
   },
 
@@ -100,8 +107,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "New App User",
     description: "When a new user signs up for the app",
     icon: Users,
-    email: false,
-    push: false,
+    defaultEmail: false,
+    defaultPush: false,
     category: "system",
   },
   {
@@ -109,8 +116,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Beta Tester Feedback",
     description: "When a beta tester submits feedback",
     icon: Users,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "system",
   },
   {
@@ -118,8 +125,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Crash Spike Alert",
     description: "When crash rate exceeds normal levels",
     icon: AlertTriangle,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "system",
   },
 
@@ -129,8 +136,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "Failed Login Attempts",
     description: "When multiple failed login attempts are detected",
     icon: Shield,
-    email: true,
-    push: true,
+    defaultEmail: true,
+    defaultPush: true,
     category: "security",
   },
   {
@@ -138,8 +145,8 @@ const defaultSettings: NotificationSetting[] = [
     label: "New Device Login",
     description: "When someone logs in from a new device",
     icon: Smartphone,
-    email: true,
-    push: false,
+    defaultEmail: true,
+    defaultPush: false,
     category: "security",
   },
 ];
@@ -151,54 +158,117 @@ const categories = [
   { id: "security", label: "Security", icon: Shield },
 ] as const;
 
-export function NotificationsPage() {
-  const [settings, setSettings] = useState<NotificationSetting[]>(defaultSettings);
-  const [isSaving, setIsSaving] = useState(false);
+interface LocalSetting {
+  id: string;
+  email: boolean;
+  push: boolean;
+}
 
+export function NotificationsPage() {
+  const { data: savedSettings, isLoading } = useNotificationSettings();
+  const saveMutation = useSaveNotificationSettings();
+
+  // Local state for settings (allows editing before saving)
+  const [localSettings, setLocalSettings] = useState<LocalSetting[]>([]);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  // Initialize local settings from saved data or defaults
+  useEffect(() => {
+    const settings = notificationConfigs.map((config) => {
+      const saved = savedSettings?.find(
+        (s) => s.notification_type === config.id
+      );
+      return {
+        id: config.id,
+        email: saved?.email_enabled ?? config.defaultEmail,
+        push: saved?.push_enabled ?? config.defaultPush,
+      };
+    });
+    setLocalSettings(settings);
+    setHasChanges(false);
+  }, [savedSettings]);
+
+  // Get setting value
+  const getSetting = (id: string) => {
+    return localSettings.find((s) => s.id === id) || { id, email: false, push: false };
+  };
+
+  // Toggle setting
   const toggleSetting = (id: string, type: "email" | "push") => {
-    setSettings((prev) =>
+    setLocalSettings((prev) =>
       prev.map((setting) =>
         setting.id === id ? { ...setting, [type]: !setting[type] } : setting
       )
     );
+    setHasChanges(true);
   };
 
+  // Save all settings
   const handleSave = async () => {
-    setIsSaving(true);
-    // Simulate saving to backend
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    const updates: NotificationSettingUpdate[] = localSettings.map((s) => ({
+      notification_type: s.id,
+      email_enabled: s.email,
+      push_enabled: s.push,
+    }));
 
-    // In a real app, you would save to Supabase here:
-    // await supabase.from('notification_settings').upsert(settings)
-
-    toast.success("Notification settings saved");
-    setIsSaving(false);
+    try {
+      await saveMutation.mutateAsync(updates);
+      toast.success("Notification settings saved");
+      setHasChanges(false);
+    } catch (error) {
+      toast.error("Failed to save settings");
+    }
   };
 
+  // Enable/disable all in category
   const enableAll = (category: string) => {
-    setSettings((prev) =>
+    const categoryIds = notificationConfigs
+      .filter((c) => c.category === category)
+      .map((c) => c.id);
+
+    setLocalSettings((prev) =>
       prev.map((setting) =>
-        setting.category === category
+        categoryIds.includes(setting.id)
           ? { ...setting, email: true, push: true }
           : setting
       )
     );
+    setHasChanges(true);
   };
 
   const disableAll = (category: string) => {
-    setSettings((prev) =>
+    const categoryIds = notificationConfigs
+      .filter((c) => c.category === category)
+      .map((c) => c.id);
+
+    setLocalSettings((prev) =>
       prev.map((setting) =>
-        setting.category === category
+        categoryIds.includes(setting.id)
           ? { ...setting, email: false, push: false }
           : setting
       )
     );
+    setHasChanges(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-6 w-72" />
+        </div>
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-64 rounded-2xl" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl lg:text-4xl font-bold mb-2">Notifications</h1>
           <p className="text-muted-foreground text-lg">
@@ -207,16 +277,20 @@ export function NotificationsPage() {
         </div>
         <Button
           onClick={handleSave}
-          disabled={isSaving}
+          disabled={saveMutation.isPending || !hasChanges}
           className="rounded-xl glow-orange"
         >
-          <Save className="w-4 h-4 mr-2" />
-          {isSaving ? "Saving..." : "Save Changes"}
+          {saveMutation.isPending ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
+          {saveMutation.isPending ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
         </Button>
       </div>
 
       {/* Legend */}
-      <div className="glass rounded-2xl p-4 flex items-center gap-6">
+      <div className="glass rounded-2xl p-4 flex flex-wrap items-center gap-4 sm:gap-6">
         <div className="flex items-center gap-2">
           <Mail className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Email</span>
@@ -225,19 +299,24 @@ export function NotificationsPage() {
           <Smartphone className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Push Notification</span>
         </div>
+        {hasChanges && (
+          <span className="text-sm text-primary font-medium">
+            • Unsaved changes
+          </span>
+        )}
       </div>
 
       {/* Settings by Category */}
       {categories.map((category) => {
-        const categorySettings = settings.filter(
-          (s) => s.category === category.id
+        const categoryConfigs = notificationConfigs.filter(
+          (c) => c.category === category.id
         );
         const Icon = category.icon;
 
         return (
-          <div key={category.id} className="glass rounded-2xl p-6">
+          <div key={category.id} className="glass rounded-2xl p-4 sm:p-6">
             {/* Category Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
                   <Icon className="w-5 h-5" />
@@ -265,30 +344,32 @@ export function NotificationsPage() {
             </div>
 
             {/* Settings List */}
-            <div className="space-y-4">
-              {categorySettings.map((setting) => {
-                const SettingIcon = setting.icon;
+            <div className="space-y-3 sm:space-y-4">
+              {categoryConfigs.map((config) => {
+                const SettingIcon = config.icon;
+                const setting = getSetting(config.id);
+
                 return (
                   <div
-                    key={setting.id}
-                    className="flex items-center justify-between p-4 rounded-xl bg-background/50"
+                    key={config.id}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-xl bg-background/50"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
                         <SettingIcon className="w-5 h-5 text-muted-foreground" />
                       </div>
-                      <div>
-                        <p className="font-medium">{setting.label}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {setting.description}
+                      <div className="min-w-0">
+                        <p className="font-medium">{config.label}</p>
+                        <p className="text-sm text-muted-foreground truncate sm:whitespace-normal">
+                          {config.description}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 ml-auto sm:ml-0">
                       {/* Email Toggle */}
                       <button
-                        onClick={() => toggleSetting(setting.id, "email")}
+                        onClick={() => toggleSetting(config.id, "email")}
                         className={cn(
                           "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors",
                           setting.email
@@ -298,14 +379,14 @@ export function NotificationsPage() {
                         title="Email notifications"
                       >
                         <Mail className="w-4 h-4" />
-                        <span className="text-xs font-medium hidden sm:inline">
+                        <span className="text-xs font-medium">
                           {setting.email ? "On" : "Off"}
                         </span>
                       </button>
 
                       {/* Push Toggle */}
                       <button
-                        onClick={() => toggleSetting(setting.id, "push")}
+                        onClick={() => toggleSetting(config.id, "push")}
                         className={cn(
                           "flex items-center gap-2 px-3 py-2 rounded-xl transition-colors",
                           setting.push
@@ -315,7 +396,7 @@ export function NotificationsPage() {
                         title="Push notifications"
                       >
                         <Smartphone className="w-4 h-4" />
-                        <span className="text-xs font-medium hidden sm:inline">
+                        <span className="text-xs font-medium">
                           {setting.push ? "On" : "Off"}
                         </span>
                       </button>
@@ -330,7 +411,7 @@ export function NotificationsPage() {
 
       {/* Info Note */}
       <div className="glass rounded-2xl p-4 flex items-start gap-3">
-        <Bell className="w-5 h-5 text-muted-foreground mt-0.5" />
+        <Bell className="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
         <div>
           <p className="text-sm text-muted-foreground">
             Push notifications require the Prometheus Admin mobile app or browser
