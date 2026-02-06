@@ -354,7 +354,7 @@ export function TrackingErrorDetailPage() {
                   borderRadius: "12px",
                 }}
                 labelFormatter={(frame) => `Frame ${frame}`}
-                formatter={(value: number) => [`${value}%`, "Confidence"]}
+                formatter={(value: number | undefined) => [`${value ?? 0}%`, "Confidence"]}
               />
               <ReferenceLine
                 y={30}
