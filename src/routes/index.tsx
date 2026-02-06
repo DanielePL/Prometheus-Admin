@@ -48,6 +48,8 @@ import { ProjectsPage } from "@/pages/tasks/ProjectsPage";
 import { LabDashboardPage } from "@/pages/lab/LabDashboardPage";
 import { AthletesListPage } from "@/pages/lab/AthletesListPage";
 import { AthleteDetailPage } from "@/pages/lab/AthleteDetailPage";
+import { TrackingErrorsPage } from "@/pages/lab/TrackingErrorsPage";
+import { TrackingErrorDetailPage } from "@/pages/lab/TrackingErrorDetailPage";
 
 // Security Pages
 import { LoginAuditPage } from "@/pages/security/LoginAuditPage";
@@ -417,6 +419,22 @@ export const router = createBrowserRouter([
         element: (
           <PermissionGuard permission="lab">
             <AthleteDetailPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "lab/tracking-errors",
+        element: (
+          <PermissionGuard permission="lab">
+            <TrackingErrorsPage />
+          </PermissionGuard>
+        ),
+      },
+      {
+        path: "lab/tracking-errors/:videoId",
+        element: (
+          <PermissionGuard permission="lab">
+            <TrackingErrorDetailPage />
           </PermissionGuard>
         ),
       },

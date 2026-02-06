@@ -154,6 +154,7 @@ const allNavigation: NavItem[] = [
     children: [
       { label: "Dashboard", href: "/lab" },
       { label: "Athletes", href: "/lab/athletes" },
+      { label: "Tracking Errors", href: "/lab/tracking-errors" },
     ],
   },
   {
