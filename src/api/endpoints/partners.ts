@@ -1,4 +1,5 @@
 import { adminApi } from "../client";
+import { supabase } from "../supabaseClient";
 import type {
   Partner,
   CreatePartnerInput,
@@ -61,8 +62,15 @@ export const partnersApi = {
   },
 
   delete: async (id: string): Promise<{ success: boolean }> => {
-    const response = await adminApi.delete(`/partners/${id}`);
-    return response.data;
+    if (!supabase) throw new Error("Supabase not configured");
+
+    // Delete related records first to avoid FK constraint errors
+    await supabase.from("partner_referrals").delete().eq("partner_id", id);
+    await supabase.from("partner_payouts").delete().eq("partner_id", id);
+
+    const { error } = await supabase.from("partners").delete().eq("id", id);
+    if (error) throw error;
+    return { success: true };
   },
 
   getReferrals: async (partnerId?: string): Promise<PartnerReferral[]> => {

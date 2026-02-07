@@ -1,4 +1,5 @@
 import { adminApi } from "../client";
+import { supabase } from "../supabaseClient";
 import type {
   Influencer,
   CreateInfluencerInput,
@@ -33,7 +34,10 @@ export const influencersApi = {
   },
 
   delete: async (id: string): Promise<void> => {
-    await adminApi.delete(`/influencers/${id}`);
+    if (!supabase) throw new Error("Supabase not configured");
+
+    const { error } = await supabase.from("influencers").delete().eq("id", id);
+    if (error) throw error;
   },
 
   // Get influencers by status for pipeline view
