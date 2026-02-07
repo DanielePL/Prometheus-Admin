@@ -11,6 +11,9 @@ import {
   CheckCircle,
   XCircle,
   Archive,
+  Shield,
+  MapPin,
+  Crosshair,
 } from "lucide-react";
 import {
   useTrackingError,
@@ -26,9 +29,14 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  ScatterChart,
+  Scatter,
+  ComposedChart,
+  Bar,
+  Cell,
 } from "recharts";
 import { format, parseISO } from "date-fns";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { ReviewStatus } from "@/api/types/trackingErrors";
 
 const severityColors: Record<string, string> = {
@@ -52,6 +60,66 @@ export function TrackingErrorDetailPage() {
       notes: reviewNotes || undefined,
     });
   };
+
+  // Prepare event timeline data
+  const eventTimelineData = useMemo(() => {
+    if (!video) return [];
+
+    type TimelineEvent = {
+      frame: number;
+      type: string;
+      color: string;
+      label: string;
+    };
+
+    const events: TimelineEvent[] = [];
+
+    // Lock events
+    const lockEvents = Array.isArray(video.lock_events) ? video.lock_events : [];
+    for (const e of lockEvents) {
+      events.push({
+        frame: e.frame,
+        type: e.type === "lock" ? "lock" : "unlock",
+        color: e.type === "lock" ? "#22c55e" : "#ef4444",
+        label: e.type === "lock" ? "Lock" : "Unlock",
+      });
+    }
+
+    // Jump guard events
+    const jumpGuardEvents = Array.isArray(video.jump_guard_events) ? video.jump_guard_events : [];
+    for (const e of jumpGuardEvents) {
+      events.push({
+        frame: e.frame,
+        type: "jump_guard",
+        color: "#f97316",
+        label: e.type === "force_reinit" ? "Force Reinit" : "Jump Rejected",
+      });
+    }
+
+    // Zone violations
+    const zoneViolations = Array.isArray(video.zone_violations) ? video.zone_violations : [];
+    for (const e of zoneViolations) {
+      events.push({
+        frame: e.frame,
+        type: "zone_violation",
+        color: "#a855f7",
+        label: `Zone (${e.normalized_x.toFixed(2)}, ${e.normalized_y.toFixed(2)})`,
+      });
+    }
+
+    // YOLO re-anchors
+    const yoloReanchors = Array.isArray(video.yolo_reanchors) ? video.yolo_reanchors : [];
+    for (const e of yoloReanchors) {
+      events.push({
+        frame: e.frame,
+        type: "yolo_reanchor",
+        color: "#3b82f6",
+        label: `YOLO Re-anchor (${Math.round(e.drift_px)}px)`,
+      });
+    }
+
+    return events.sort((a, b) => a.frame - b.frame);
+  }, [video]);
 
   if (isLoading) {
     return (
@@ -93,6 +161,27 @@ export function TrackingErrorDetailPage() {
       }))
     : [];
 
+  // Prepare YOLO re-anchor drift data for bar chart
+  const yoloReanchors = Array.isArray(video.yolo_reanchors) ? video.yolo_reanchors : [];
+  const yoloDriftData = yoloReanchors.map((r, i) => ({
+    index: i + 1,
+    frame: r.frame,
+    drift_px: Math.round(r.drift_px),
+  }));
+
+  // Zone violation data
+  const zoneViolations = Array.isArray(video.zone_violations) ? video.zone_violations : [];
+
+  // Jump guard data
+  const jumpGuardEvents = Array.isArray(video.jump_guard_events) ? video.jump_guard_events : [];
+
+  const hasJumpGuardData =
+    (video.jump_guard_rejection_count ?? 0) > 0 ||
+    (video.jump_guard_force_reinit_count ?? 0) > 0;
+  const hasZoneViolationData = (video.zone_violation_count ?? 0) > 0;
+  const hasYoloReanchorData = yoloReanchors.length > 0;
+  const hasEventTimeline = eventTimelineData.length > 0;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -131,6 +220,58 @@ export function TrackingErrorDetailPage() {
             className="w-full max-h-[500px] bg-black"
             playsInline
           />
+        </div>
+      )}
+
+      {/* Event Timeline */}
+      {hasEventTimeline && (
+        <div className="glass rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4">Event Timeline</h2>
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="flex items-center gap-1.5 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
+              <span className="text-muted-foreground">Lock</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              <span className="text-muted-foreground">Unlock</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+              <span className="text-muted-foreground">Jump Guard</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+              <span className="text-muted-foreground">Zone Violation</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span className="text-muted-foreground">YOLO Re-anchor</span>
+            </div>
+          </div>
+          <div className="relative w-full h-12 bg-background/50 rounded-lg overflow-hidden">
+            {eventTimelineData.map((event, i) => {
+              const position =
+                video.total_frames > 0
+                  ? (event.frame / video.total_frames) * 100
+                  : 0;
+              return (
+                <div
+                  key={`${event.type}-${event.frame}-${i}`}
+                  className="absolute top-0 h-full w-1 rounded-full opacity-80 hover:opacity-100 transition-opacity"
+                  style={{
+                    left: `${position}%`,
+                    backgroundColor: event.color,
+                  }}
+                  title={`Frame ${event.frame}: ${event.label}`}
+                />
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-1 text-xs text-muted-foreground">
+            <span>Frame 0</span>
+            <span>Frame {video.total_frames}</span>
+          </div>
         </div>
       )}
 
@@ -319,6 +460,208 @@ export function TrackingErrorDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Diagnostic Event Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Jump Guard Card */}
+        {hasJumpGuardData && (
+          <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Shield className="w-5 h-5 text-orange-400" />
+              Jump Guard
+            </h2>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Rejections</p>
+                <p className="text-xl font-bold text-orange-400">
+                  {video.jump_guard_rejection_count ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Max Consecutive</p>
+                <p className="text-xl font-bold">
+                  {video.max_consecutive_jump_rejections ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Force Reinits</p>
+                <p className="text-xl font-bold text-red-400">
+                  {video.jump_guard_force_reinit_count ?? 0}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">
+                  Detection Rejections
+                </p>
+                <p className="text-xl font-bold text-muted-foreground">
+                  {video.detection_zone_rejection_count ?? 0}
+                </p>
+              </div>
+            </div>
+            {jumpGuardEvents.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Events ({jumpGuardEvents.length} sampled)
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {jumpGuardEvents.slice(0, 10).map((e, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-xs"
+                    >
+                      <span className="text-muted-foreground">
+                        F{e.frame}
+                      </span>
+                      <span
+                        className={
+                          e.type === "force_reinit"
+                            ? "text-red-400"
+                            : "text-orange-400"
+                        }
+                      >
+                        {e.type === "force_reinit"
+                          ? "FORCE REINIT"
+                          : `${Math.round(e.jump_px)}px (#${e.consecutive_count})`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Zone Violations Card */}
+        {hasZoneViolationData && (
+          <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-purple-400" />
+              Zone Violations
+            </h2>
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground">Total Violations</p>
+              <p className="text-xl font-bold text-purple-400">
+                {video.zone_violation_count ?? 0}
+              </p>
+            </div>
+
+            {/* SVG visualization of zone violation positions */}
+            {zoneViolations.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Violation Positions (normalized 0-1)
+                </p>
+                <div className="relative bg-background/50 rounded-lg overflow-hidden">
+                  <svg
+                    viewBox="0 0 100 100"
+                    className="w-full"
+                    style={{ maxHeight: "160px" }}
+                  >
+                    {/* Grid lines */}
+                    <line
+                      x1="0" y1="50" x2="100" y2="50"
+                      stroke="rgba(255,255,255,0.1)"
+                      strokeDasharray="2"
+                    />
+                    <line
+                      x1="50" y1="0" x2="50" y2="100"
+                      stroke="rgba(255,255,255,0.1)"
+                      strokeDasharray="2"
+                    />
+                    {/* Violation dots */}
+                    {zoneViolations.map((v, i) => (
+                      <circle
+                        key={i}
+                        cx={v.normalized_x * 100}
+                        cy={v.normalized_y * 100}
+                        r={2.5}
+                        fill="#a855f7"
+                        opacity={0.8}
+                      >
+                        <title>
+                          Frame {v.frame}: ({v.normalized_x.toFixed(2)},{" "}
+                          {v.normalized_y.toFixed(2)})
+                        </title>
+                      </circle>
+                    ))}
+                  </svg>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* YOLO Re-anchors Card */}
+        {hasYoloReanchorData && (
+          <div className="glass rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Crosshair className="w-5 h-5 text-blue-400" />
+              YOLO Re-anchors
+            </h2>
+            <div className="mb-3">
+              <p className="text-xs text-muted-foreground">Total Re-anchors</p>
+              <p className="text-xl font-bold text-blue-400">
+                {yoloReanchors.length}
+              </p>
+            </div>
+
+            {/* Drift bar chart */}
+            {yoloDriftData.length > 0 && (
+              <div className="mt-2">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Drift Distance (px)
+                </p>
+                <ResponsiveContainer width="100%" height={120}>
+                  <ComposedChart data={yoloDriftData}>
+                    <XAxis
+                      dataKey="index"
+                      stroke="#666"
+                      fontSize={10}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="#666"
+                      fontSize={10}
+                      tickLine={false}
+                      width={35}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        background: "#1a1a1a",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                      }}
+                      formatter={(value: number) => [`${value}px`, "Drift"]}
+                      labelFormatter={(label) => {
+                        const item = yoloDriftData.find(
+                          (d) => d.index === label
+                        );
+                        return item ? `Frame ${item.frame}` : `#${label}`;
+                      }}
+                    />
+                    <Bar dataKey="drift_px" radius={[4, 4, 0, 0]}>
+                      {yoloDriftData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            entry.drift_px > 100
+                              ? "#ef4444"
+                              : entry.drift_px > 50
+                              ? "#f97316"
+                              : "#3b82f6"
+                          }
+                          fillOpacity={0.7}
+                        />
+                      ))}
+                    </Bar>
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Confidence Timeline Chart */}

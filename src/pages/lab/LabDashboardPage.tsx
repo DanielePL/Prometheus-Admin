@@ -8,8 +8,13 @@ import {
   Dumbbell,
   Clock,
   BarChart3,
+  AlertTriangle,
+  Eye,
+  ShieldAlert,
+  Lock,
 } from "lucide-react";
 import { useLabStats, useLabAthletes, useRecentVelocityRecords } from "@/hooks/useLab";
+import { useTrackingErrorStats } from "@/hooks/useTrackingErrors";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +46,7 @@ export function LabDashboardPage() {
   const { data: stats, isLoading: statsLoading } = useLabStats();
   const { data: athletes, isLoading: athletesLoading } = useLabAthletes();
   const { data: recentRecords, isLoading: recentLoading } = useRecentVelocityRecords(20);
+  const { data: trackingErrorStats, isLoading: trackingErrorsLoading } = useTrackingErrorStats();
 
   // Prepare chart data - records over last 14 days
   const recordsChartData = useMemo(() => {
@@ -178,6 +184,85 @@ export function LabDashboardPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Tracking Errors Section */}
+      <div className="glass rounded-2xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Tracking Errors</h2>
+              <p className="text-sm text-muted-foreground">MOSSE tracker diagnostics</p>
+            </div>
+          </div>
+          <Link to="/lab/tracking-errors">
+            <Button variant="ghost" size="sm" className="rounded-xl">
+              View All <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </Link>
+        </div>
+
+        {trackingErrorsLoading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-24 rounded-xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="p-4 rounded-xl bg-background/50 border border-white/5">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Total Errors</span>
+              </div>
+              <p className="text-2xl font-bold">
+                {formatNumber(trackingErrorStats?.total || 0)}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-background/50 border border-yellow-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Eye className="w-4 h-4 text-yellow-400" />
+                <span className="text-xs text-yellow-400">Pending Review</span>
+              </div>
+              <p className="text-2xl font-bold text-yellow-400">
+                {formatNumber(trackingErrorStats?.pending_review || 0)}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-background/50 border border-red-500/20">
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldAlert className="w-4 h-4 text-red-400" />
+                <span className="text-xs text-red-400">High / Critical</span>
+              </div>
+              <p className="text-2xl font-bold text-red-400">
+                {formatNumber(trackingErrorStats?.high_critical_count || 0)}
+              </p>
+            </div>
+
+            <div className="p-4 rounded-xl bg-background/50 border border-white/5">
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-4 h-4 text-green-400" />
+                <span className="text-xs text-muted-foreground">Avg Lock Ratio</span>
+              </div>
+              <p
+                className={`text-2xl font-bold ${
+                  trackingErrorStats?.avg_lock_ratio != null &&
+                  trackingErrorStats.avg_lock_ratio >= 0.7
+                    ? "text-green-400"
+                    : "text-orange-400"
+                }`}
+              >
+                {trackingErrorStats?.avg_lock_ratio != null
+                  ? `${(trackingErrorStats.avg_lock_ratio * 100).toFixed(0)}%`
+                  : "-"}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Charts Row */}
@@ -415,6 +500,12 @@ export function LabDashboardPage() {
             <Button variant="outline" className="rounded-xl">
               <Dumbbell className="w-4 h-4 mr-2" />
               Exercise Analysis
+            </Button>
+          </Link>
+          <Link to="/lab/tracking-errors">
+            <Button variant="outline" className="rounded-xl">
+              <AlertTriangle className="w-4 h-4 mr-2" />
+              Tracking Errors
             </Button>
           </Link>
         </div>

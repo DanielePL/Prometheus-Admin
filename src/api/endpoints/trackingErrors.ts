@@ -88,7 +88,7 @@ export const trackingErrorsApi = {
 
     const { data, error } = await supabase
       .from("tracking_error_videos")
-      .select("error_severity, review_status");
+      .select("error_severity, review_status, frames_locked, total_frames");
 
     if (error) throw error;
 
@@ -105,9 +105,22 @@ export const trackingErrorsApi = {
       critical: records.filter((r) => r.error_severity === "critical").length,
     };
 
+    const highCriticalCount = bySeverity.high + bySeverity.critical;
+
+    // Calculate average lock ratio across all videos
+    const lockRatios = records
+      .filter((r) => r.total_frames > 0)
+      .map((r) => r.frames_locked / r.total_frames);
+    const avgLockRatio =
+      lockRatios.length > 0
+        ? lockRatios.reduce((a, b) => a + b, 0) / lockRatios.length
+        : null;
+
     return {
       total,
       pending_review: pendingReview,
+      high_critical_count: highCriticalCount,
+      avg_lock_ratio: avgLockRatio,
       by_severity: bySeverity,
     };
   },

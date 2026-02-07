@@ -44,6 +44,18 @@ export interface TrackingErrorVideo {
   max_bar_path_drift: number | null;
   max_tracking_jump_px: number | null;
 
+  // Diagnostic Events (JSONB)
+  zone_violations: ZoneViolation[];
+  yolo_reanchors: YoloReanchor[];
+  jump_guard_events: JumpGuardEvent[];
+
+  // Diagnostic Event Aggregates
+  zone_violation_count: number;
+  jump_guard_rejection_count: number;
+  max_consecutive_jump_rejections: number;
+  jump_guard_force_reinit_count: number;
+  detection_zone_rejection_count: number;
+
   // Review
   review_status: ReviewStatus;
   reviewer_notes: string | null;
@@ -76,6 +88,24 @@ export interface TrackingJump {
   to_y: number;
 }
 
+export interface ZoneViolation {
+  frame: number;
+  normalized_x: number;
+  normalized_y: number;
+}
+
+export interface YoloReanchor {
+  frame: number;
+  drift_px: number;
+}
+
+export interface JumpGuardEvent {
+  frame: number;
+  type: "rejection" | "force_reinit";
+  jump_px: number;
+  consecutive_count: number;
+}
+
 export interface TrackingErrorFilters {
   severity?: string;
   exercise_name?: string;
@@ -88,6 +118,8 @@ export interface TrackingErrorFilters {
 export interface TrackingErrorStats {
   total: number;
   pending_review: number;
+  high_critical_count: number;
+  avg_lock_ratio: number | null;
   by_severity: {
     low: number;
     medium: number;
