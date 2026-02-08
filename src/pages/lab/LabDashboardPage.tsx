@@ -439,7 +439,7 @@ export function LabDashboardPage() {
                   <div className="flex items-center gap-2">
                     <Dumbbell className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium truncate max-w-[150px]">
-                      {record.exercise_id}
+                      {record.exercise_name || record.exercise_id.slice(0, 8)}
                     </span>
                   </div>
                   <span

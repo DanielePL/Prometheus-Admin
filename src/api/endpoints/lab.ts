@@ -255,7 +255,8 @@ export const labApi = {
     const { data, error } = await query;
     if (error) throw error;
 
-    return data || [];
+    const records = data || [];
+    return labApi._resolveExerciseNames(records);
   },
 
   // Get athlete's workout sessions
@@ -337,7 +338,8 @@ export const labApi = {
 
     if (error) throw error;
 
-    return data || [];
+    const records = data || [];
+    return labApi._resolveExerciseNames(records);
   },
 
   // Export velocity data as array (for CSV conversion)
@@ -371,5 +373,27 @@ export const labApi = {
     if (error) throw error;
 
     return data || [];
+  },
+
+  // Internal helper: resolve exercise_id → exercise_name for velocity records
+  _resolveExerciseNames: async (
+    records: VelocityRecord[]
+  ): Promise<VelocityRecord[]> => {
+    if (!supabase || records.length === 0) return records;
+
+    const exerciseIds = [...new Set(records.map((r) => r.exercise_id))];
+    const { data: exercisesData } = await supabase
+      .from("exercises")
+      .select("id, name")
+      .in("id", exerciseIds);
+
+    const nameMap = new Map(
+      exercisesData?.map((e) => [e.id, e.name]) || []
+    );
+
+    return records.map((r) => ({
+      ...r,
+      exercise_name: nameMap.get(r.exercise_id),
+    }));
   },
 };

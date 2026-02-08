@@ -50,12 +50,16 @@ export function AthleteDetailPage() {
   // Get unique exercises from velocity history
   const exercises = useMemo(() => {
     if (!velocityHistory) return [];
-    const exerciseMap = new Map<string, number>();
+    const exerciseMap = new Map<string, { count: number; name?: string }>();
     for (const record of velocityHistory) {
-      exerciseMap.set(record.exercise_id, (exerciseMap.get(record.exercise_id) || 0) + 1);
+      const existing = exerciseMap.get(record.exercise_id);
+      exerciseMap.set(record.exercise_id, {
+        count: (existing?.count || 0) + 1,
+        name: existing?.name || record.exercise_name,
+      });
     }
     return Array.from(exerciseMap.entries())
-      .map(([id, count]) => ({ id, count }))
+      .map(([id, { count, name }]) => ({ id, count, name }))
       .sort((a, b) => b.count - a.count);
   }, [velocityHistory]);
 
@@ -106,6 +110,7 @@ export function AthleteDetailPage() {
 
     const headers = [
       "recorded_at",
+      "exercise_name",
       "exercise_id",
       "load_kg",
       "mean_velocity",
@@ -120,6 +125,7 @@ export function AthleteDetailPage() {
     const rows = filteredVelocityHistory.map((r) =>
       [
         r.recorded_at,
+        r.exercise_name || "",
         r.exercise_id,
         r.load_kg,
         r.mean_velocity,
@@ -250,7 +256,7 @@ export function AthleteDetailPage() {
               className="rounded-xl"
               onClick={() => setSelectedExercise(ex.id)}
             >
-              {ex.id.slice(0, 20)}... ({ex.count})
+              {ex.name || ex.id.slice(0, 8)} ({ex.count})
             </Button>
           ))}
           {exercises.length > 8 && (

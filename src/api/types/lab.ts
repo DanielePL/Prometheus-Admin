@@ -18,6 +18,8 @@ export interface VelocityRecord {
   load_percent_1rm: number | null;
   recorded_at: string;
   created_at: string;
+  // Joined data
+  exercise_name?: string;
 }
 
 // Load-Velocity Profile from athlete_lvp_profiles table
