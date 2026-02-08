@@ -29,8 +29,6 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
-  ScatterChart,
-  Scatter,
   ComposedChart,
   Bar,
   Cell,
@@ -633,7 +631,7 @@ export function TrackingErrorDetailPage() {
                         borderRadius: "8px",
                         fontSize: "12px",
                       }}
-                      formatter={(value: number) => [`${value}px`, "Drift"]}
+                      formatter={(value: number | undefined) => [`${value ?? 0}px`, "Drift"]}
                       labelFormatter={(label) => {
                         const item = yoloDriftData.find(
                           (d) => d.index === label
